@@ -16,7 +16,8 @@ const useAuth = (): { logout: () => void; isLoggedIn: boolean } => ({
   isLoggedIn: true,
 });
 
-const apiBase = 'http://localhost:3000';
+import { apiBase } from '../config/api';
+
 
 async function apiGet<T>(path: string): Promise<T> {
   try {

@@ -29,7 +29,10 @@ type Project = {
 
 
 
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+
+import { apiBase } from '../config/api';
+
+
 
 
 async function apiGet<T>(path: string): Promise<T> {

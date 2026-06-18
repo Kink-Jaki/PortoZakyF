@@ -54,8 +54,10 @@ const useAuth = (): { logout: () => void; isLoggedIn: boolean } => ({
 });
 // ============================================================================
 
-// Menggunakan URL statis untuk kompatibilitas compiler di lingkungan preview
-const apiBase = 'http://localhost:3000'; 
+import { apiBase } from '../config/api';
+
+// apiBase comes from src/config/api.ts
+
 
 // API Helpers
 async function apiGet<T>(path: string): Promise<T> {
