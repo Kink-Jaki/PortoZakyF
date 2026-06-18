@@ -18,7 +18,8 @@ export const login = async (params: {
   username: string;
   password: string;
 }): Promise<string> => {
-  const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+  const { apiBase } = await import('../config/api');
+
 
   const res = await fetch(`${apiBase}/auth/login`, {
     method: 'POST',
