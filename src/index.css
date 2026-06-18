@@ -2,18 +2,28 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 96px; /* untuk anchor agar tidak ketutup navbar fixed */
+  text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   background: #0A0A0F;
   color: #F8F8FC;
+  overflow-x: hidden; /* hindari horizontal scroll dari elemen absolute/fixed */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* Landing-only: galaxy / twinkle background */
 .galaxy-bg {
   opacity: 1;
 }
+
 
 .galaxy-stars {
   position: absolute;
@@ -51,8 +61,9 @@ body {
 
 .galaxy-nebula {
   position: absolute;
-  width: 900px;
-  height: 900px;
+  /* Responsif: ukuran besar relatif viewport agar tidak overflow/terpotong buruk di mobile */
+  width: clamp(420px, 80vw, 900px);
+  height: clamp(420px, 80vw, 900px);
   left: 50%;
   top: 50%;
   border-radius: 9999px;
@@ -69,8 +80,8 @@ body {
 }
 
 .galaxy-nebula--2 {
-  width: 1100px;
-  height: 1100px;
+  width: clamp(520px, 95vw, 1100px);
+  height: clamp(520px, 95vw, 1100px);
   opacity: 0.22;
   background:
     radial-gradient(circle at 25% 60%, rgba(139,92,246,0.55) 0%, transparent 58%),
@@ -79,14 +90,27 @@ body {
 }
 
 .galaxy-nebula--3 {
-  width: 650px;
-  height: 650px;
+  width: clamp(340px, 60vw, 650px);
+  height: clamp(340px, 60vw, 650px);
   opacity: 0.18;
   background:
     radial-gradient(circle at 60% 40%, rgba(99,102,241,0.65) 0%, transparent 60%),
     radial-gradient(circle at 40% 70%, rgba(34,211,238,0.5) 0%, transparent 62%);
   animation: galaxyDrift3 14s ease-in-out infinite;
 }
+
+@media (max-width: 640px) {
+  .galaxy-nebula {
+    filter: blur(42px);
+  }
+  .galaxy-stars {
+    background-size: 650px 650px;
+  }
+  .galaxy-stars--layer2 {
+    background-size: 1000px 1000px;
+  }
+}
+
 
 .galaxy-vignette {
   position: absolute;

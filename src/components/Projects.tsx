@@ -147,6 +147,7 @@ const Projects: React.FC = () => {
               <h3 className="mt-4 text-xl font-semibold text-[#F8F8FC]">{p.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-[#A0A0B0] flex-grow">{p.description}</p>
 
+
               <div className="mt-5 flex flex-wrap gap-2">
                 {p.tags.map((t) => (
                   <span
