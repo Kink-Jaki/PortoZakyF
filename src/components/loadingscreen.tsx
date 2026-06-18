@@ -2,18 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import {
-  Volume2,
-  VolumeX,
+
   Terminal,
-  Cpu,
-  Layers,
-  RefreshCw,
-  Shield,
-  Radio,
-  Eye,
-  EyeOff,
-  Database,
-  Zap
 } from 'lucide-react';
 
 // ============================================================================

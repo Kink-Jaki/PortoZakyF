@@ -11,6 +11,7 @@ import Projects from './components/Projects';
 import Experience from './components/Experience';
 import Footer from './components/Footer';
 import LoadingScreen from './components/loadingscreen';
+
 import GalaxyBackground from './components/GalaxyBackground';
 import { AuthProvider } from './auth/AuthContext';
 // import Dashboard from './pages/Dashboard';
