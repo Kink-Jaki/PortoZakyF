@@ -7,13 +7,14 @@ import LoginModal from './LoginModal';
 type NavItem = { label: string; href: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', href: '#home' },
-  { label: 'About', href: '#about' },
-  { label: 'Skills', href: '#skills' },
-  { label: 'Projects', href: '#projects' },
-  { label: 'Experience', href: '#experience' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Beranda', href: '#home' },
+  { label: 'Tentang', href: '#about' },
+  { label: 'Keahlian', href: '#skills' },
+  { label: 'Proyek', href: '#projects' },
+  { label: 'Pengalaman', href: '#experience' },
+  { label: 'Kontak', href: '#contact' },
 ];
+
 
 const Navbar: React.FC = () => {
   const { isLoggedIn } = useAuth();
@@ -164,7 +165,7 @@ const Navbar: React.FC = () => {
                 onClick={(e) => handleNavClick(e, '#contact')}
                 className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[#0A0A0F]"
               >
-                Let&apos;s Talk
+                Ayo Ngobrol
               </a>
 
             </div>
@@ -237,7 +238,7 @@ const Navbar: React.FC = () => {
                 onClick={(e) => handleNavClick(e, '#contact')}
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 text-base font-medium text-white rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-[0.98]"
               >
-                Let&apos;s Talk
+                Ayo Ngobrol
               </a>
             </div>
           </nav>
