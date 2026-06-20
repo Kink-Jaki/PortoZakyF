@@ -82,7 +82,7 @@ const Footer: React.FC = () => {
           <div className="mt-10 grid gap-4 w-full max-w-lg sm:grid-cols-3">
             {/* Email */}
             <a
-              href="mailto:fzaky@gmail.com"
+              href="mailto:fzaky474@gmail.com"
               className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-[var(--text-primary)]/[0.04] hover:border-[var(--text-secondary)]/30 focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06B6D4]/10 text-[#06B6D4] group-hover:bg-[#06B6D4] group-hover:text-white transition-colors duration-300">
