@@ -4,11 +4,7 @@ import { Menu, X, Code2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import LoginModal from './LoginModal';
 
-
 // --- Local Style Injection ---
-// Kita gunakan CSS murni untuk mengontrol latar belakang navbar secara dinamis.
-// Saat berada di tema light ([data-theme='light']), kita buat warnanya putih murni solid (#ffffff)
-// agar pendaran cahaya (glow effect) dari konten di bawahnya tidak menembus dan membuatnya tampak abu-abu.
 const navbarStyles = `
   :root {
     --navbar-bg: rgba(10, 10, 15, 0.6);
@@ -18,9 +14,9 @@ const navbarStyles = `
   }
 
   [data-theme='light'] {
-    --navbar-bg: #ffffff !important; /* Dipaksa putih murni solid */
-    --navbar-bg-scrolled: rgba(255, 255, 255, 0.95) !important; /* Putih pekat saat scroll */
-    --navbar-shadow: rgba(15, 23, 42, 0.06) !important; /* Bayangan tipis premium */
+    --navbar-bg: #ffffff !important; 
+    --navbar-bg-scrolled: rgba(255, 255, 255, 0.95) !important; 
+    --navbar-shadow: rgba(15, 23, 42, 0.06) !important; 
     --navbar-text-active: #06B6D4;
   }
 
@@ -30,35 +26,79 @@ const navbarStyles = `
   }
 `;
 
-// --- Redirect helper ---
-// NOTE: Saat ini pakai window.location.href (paling universal, tidak butuh router).
-// Kalau project ini pakai TanStack Router / React Router, ganti isi fungsi ini
-// dengan navigate({ to: '/dashboard' }) atau navigate('/dashboard') dari hook router kamu.
 const goToDashboard = () => {
   window.location.href = '/dashboard/projects';
 };
 
+// --- Multi-Language Dictionary ---
+type Lang = 'id' | 'en';
 
+const translations = {
+  id: {
+    home: 'Beranda',
+    about: 'Tentang',
+    skills: 'Keahlian',
+    projects: 'Proyek',
+    experience: 'Pengalaman',
+    contact: 'Kontak',
+    cta: 'Ayo Ngobrol',
+  },
+  en: {
+    home: 'Home',
+    about: 'About',
+    skills: 'Skills',
+    projects: 'Projects',
+    experience: 'Experience',
+    contact: 'Contact',
+    cta: "Let's Talk",
+  },
+};
 
-type NavItem = { label: string; href: string };
+// Ubah label menjadi 'key' referensi dictionary
+type NavItem = { key: keyof typeof translations.id; href: string };
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Beranda', href: '#home' },
-  { label: 'Tentang', href: '#about' },
-  { label: 'Keahlian', href: '#skills' },
-  { label: 'Proyek', href: '#projects' },
-  { label: 'Pengalaman', href: '#experience' },
-  { label: 'Kontak', href: '#contact' },
+  { key: 'home', href: '#home' },
+  { key: 'about', href: '#about' },
+  { key: 'skills', href: '#skills' },
+  { key: 'projects', href: '#projects' },
+  { key: 'experience', href: '#experience' },
+  { key: 'contact', href: '#contact' },
 ];
 
 const Navbar: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  
+  // State Bahasa
+  const [lang, setLang] = useState<Lang>('id');
+
+  // Load awal & listener untuk mendeteksi perubahan bahasa
+  useEffect(() => {
+    const loadLang = () => {
+      const savedLang = (localStorage.getItem('lang') as Lang) || 'id';
+      setLang(savedLang);
+    };
+
+    loadLang(); // Run sekali saat mount
+
+    // Dengarkan event custom 'languageChange' (dari komponen lain di tab yang sama)
+    window.addEventListener('languageChange', loadLang);
+    
+    // Dengarkan event 'storage' (jika bahasa diubah dari tab browser lain)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lang') loadLang();
+    });
+
+    return () => {
+      window.removeEventListener('languageChange', loadLang);
+      window.removeEventListener('storage', loadLang);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -119,22 +159,20 @@ const Navbar: React.FC = () => {
   const handleLogoClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-
       if (isLoggedIn) {
-        // Sudah login -> langsung lempar ke dashboard, tanpa alert/simulasi.
         goToDashboard();
         return;
       }
-
       setIsLoginModalOpen(true);
     },
     [isLoggedIn]
   );
 
-  // Navigasi bayangan (shadow) adaptif
   const navShadow = useMemo(() => {
     return isScrolled ? 'shadow-[0_4px_30px_var(--navbar-shadow)]' : '';
   }, [isScrolled]);
+
+  const t = translations[lang];
 
   return (
     <header role="banner" className="fixed top-0 left-0 right-0 z-50 animate-fade-in" aria-label="Navbar">
@@ -148,7 +186,6 @@ const Navbar: React.FC = () => {
           window.location.href = '/dashboard/projects';
         }}
       />
-
 
       <nav 
         className={`h-20 md:h-24 border-b border-[var(--border-color)] backdrop-blur-xl ${navShadow} theme-transition-nav`}
@@ -188,7 +225,7 @@ const Navbar: React.FC = () => {
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >
-                    {item.label}
+                    {t[item.key]}
                     {isActive && (
                       <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 w-4 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] transition-all duration-300" />
                     )}
@@ -204,7 +241,7 @@ const Navbar: React.FC = () => {
                 onClick={(e) => handleNavClick(e, '#contact')}
                 className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]"
               >
-                Ayo Ngobrol
+                {t.cta}
               </a>
             </div>
 
@@ -263,7 +300,7 @@ const Navbar: React.FC = () => {
                         : 'bg-[var(--text-secondary)]'
                     }`}
                   />
-                  {item.label}
+                  {t[item.key]}
                 </a>
               );
             })}
@@ -274,7 +311,7 @@ const Navbar: React.FC = () => {
                 onClick={(e) => handleNavClick(e, '#contact')}
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 text-base font-medium text-white rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-[0.98]"
               >
-                Ayo Ngobrol
+                {t.cta}
               </a>
             </div>
           </nav>

@@ -19,10 +19,10 @@ type ProjectCardData = {
   year: string;
   tags: string[];
   imageUrl: string | null;
-  links: { label: string; href: string }[];
+  links: { labelKey: 'source' | 'info'; href: string }[];
 };
 
-// Menggunakan cara aman untuk mengakses variabel lingkungan agar tidak memicu kegagalan kompilasi pada target ES2015
+// Menggunakan cara aman untuk mengakses variabel lingkungan
 const getApiUrl = (): string => {
   try {
     // @ts-ignore
@@ -59,14 +59,8 @@ const Reveal = ({ children, delayMs = 0 }: RevealProps) => {
 
 const normalizeImageUrl = (imageUrl: string | null) => {
   if (!imageUrl) return null;
-
-  // If backend stores full URL, use as-is.
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-
-  // If it's a relative path like /uploads/xxx.png, prefix with API base.
   if (imageUrl.startsWith('/')) return `${apiBase}${imageUrl}`;
-
-  // Fallback for other relative values.
   return `${apiBase}/${imageUrl}`;
 };
 
@@ -78,10 +72,59 @@ const stackToTags = (stack: string): string[] => {
     .slice(0, 6);
 };
 
+// --- Multi-Language Dictionary ---
+type Lang = 'id' | 'en';
+
+const translations = {
+  id: {
+    badge: 'Proyek',
+    headline: 'Portofolio Saya',
+    description: 'Kumpulan sistem backend, arsitektur API, dan aplikasi yang telah saya kembangkan untuk berbagai kebutuhan bisnis.',
+    fetchError: 'Gagal mengambil data projects',
+    loadError: 'Gagal memuat projects',
+    sourceLabel: 'Kode Sumber',
+    infoLabel: 'Info Lengkap',
+  },
+  en: {
+    badge: 'Projects',
+    headline: 'My Portfolio',
+    description: 'A collection of backend systems, API architectures, and applications I have developed for various business needs.',
+    fetchError: 'Failed to fetch projects data',
+    loadError: 'Failed to load projects',
+    sourceLabel: 'Source Code',
+    infoLabel: 'More Info',
+  },
+};
+
 const Projects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectCardData[]>([]);
+
+  // State Bahasa
+  const [lang, setLang] = useState<Lang>('id');
+
+  // Load awal & listener untuk mendeteksi perubahan bahasa
+  useEffect(() => {
+    const loadLang = () => {
+      const savedLang = (localStorage.getItem('lang') as Lang) || 'id';
+      setLang(savedLang);
+    };
+
+    loadLang();
+
+    window.addEventListener('languageChange', loadLang);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lang') loadLang();
+    });
+
+    return () => {
+      window.removeEventListener('languageChange', loadLang);
+      window.removeEventListener('storage', loadLang);
+    };
+  }, []);
+
+  const t = translations[lang];
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -90,7 +133,7 @@ const Projects: React.FC = () => {
 
       try {
         const res = await fetch(`${apiBase}/project`);
-        if (!res.ok) throw new Error(`Gagal mengambil data projects (${res.status})`);
+        if (!res.ok) throw new Error(`${t.fetchError} (${res.status})`);
 
         const data = (await res.json()) as ProjectApiRow[];
 
@@ -99,9 +142,10 @@ const Projects: React.FC = () => {
           const tags = stackToTags(p.stack);
           const imageUrl = normalizeImageUrl(p.imageUrl);
 
-          const links: { label: string; href: string }[] = [];
-          if (p.githubUrl) links.push({ label: 'Source', href: p.githubUrl });
-          if (!links.length) links.push({ label: 'Info', href: '#' });
+          // Menggunakan referensi 'labelKey' agar label bisa dirender secara dinamis berdasarkan bahasa
+          const links: { labelKey: 'source' | 'info'; href: string }[] = [];
+          if (p.githubUrl) links.push({ labelKey: 'source', href: p.githubUrl });
+          if (!links.length) links.push({ labelKey: 'info', href: '#' });
 
           return {
             title: p.title,
@@ -115,14 +159,15 @@ const Projects: React.FC = () => {
 
         setProjects(mapped);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Gagal memuat projects');
+        setError(e instanceof Error ? e.message : t.loadError);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProjects();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Hanya dipanggil saat mount awal
 
   const cardList = useMemo(() => projects, [projects]);
 
@@ -134,18 +179,18 @@ const Projects: React.FC = () => {
             <Reveal delayMs={100}>
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 transition-colors duration-300">
                 <span className="h-2 w-2 rounded-full bg-[#06B6D4] shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
-                <span className="text-sm font-medium text-[var(--text-secondary)]">Proyek</span>
+                <span className="text-sm font-medium text-[var(--text-secondary)]">{t.badge}</span>
               </div>
             </Reveal>
             <Reveal delayMs={200}>
               <h2 className="mt-4 text-3xl font-bold text-[var(--text-primary)] md:text-4xl transition-colors duration-300">
-                Portofolio Saya
+                {t.headline}
               </h2>
             </Reveal>
           </div>
           <Reveal delayMs={300}>
             <p className="max-w-xl text-base leading-relaxed text-[var(--text-secondary)] md:text-right transition-colors duration-300">
-              Kumpulan sistem backend, arsitektur API, dan aplikasi yang telah saya kembangkan untuk berbagai kebutuhan bisnis.
+              {t.description}
             </p>
           </Reveal>
         </div>
@@ -191,12 +236,12 @@ const Projects: React.FC = () => {
 
                 {/* Tags Stack */}
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {p.tags.map((t) => (
+                  {p.tags.map((tag) => (
                     <span
-                      key={t}
+                      key={tag}
                       className="rounded-full border border-[#06B6D4]/20 bg-[#06B6D4]/10 px-3 py-1 text-xs font-medium text-[#06B6D4]"
                     >
-                      {t}
+                      {tag}
                     </span>
                   ))}
                 </div>
@@ -205,18 +250,18 @@ const Projects: React.FC = () => {
                 <div className="mt-6 flex flex-col gap-2 sm:flex-row">
                   {p.links.map((l) => (
                     <a
-                      key={l.label}
+                      key={l.labelKey}
                       href={l.href}
                       target={l.href.startsWith('#') ? undefined : '_blank'}
                       rel={l.href.startsWith('#') ? undefined : 'noreferrer'}
                       className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-all duration-300 hover:bg-[var(--text-primary)]/[0.08] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]/30 focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]"
                     >
-                      {l.label === 'Source' ? (
+                      {l.labelKey === 'source' ? (
                         <GitBranch className="h-4 w-4" strokeWidth={2} />
                       ) : (
                         <ExternalLink className="h-4 w-4" strokeWidth={2} />
                       )}
-                      {l.label}
+                      {l.labelKey === 'source' ? t.sourceLabel : t.infoLabel}
                     </a>
                   ))}
                 </div>

@@ -1,7 +1,61 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { GitBranch, Mail, MapPin } from 'lucide-react';
 
+// --- Multi-Language Dictionary ---
+type Lang = 'id' | 'en';
+
+const translations = {
+  id: {
+    badge: 'Kontak',
+    title: 'Mari Berkolaborasi.',
+    description: 'Punya ide proyek, pertanyaan tentang arsitektur sistem, atau sekadar ingin berdiskusi teknologi? Jangan ragu untuk menghubungi saya melalui platform di bawah ini.',
+    location: 'Blitar, Jawa Timur, Indonesia',
+    builtWith: 'Dibangun dengan React & Tailwind CSS.',
+    navHome: 'Beranda',
+    navAbout: 'Tentang',
+    navExperience: 'Pengalaman',
+    navProjects: 'Proyek',
+  },
+  en: {
+    badge: 'Contact',
+    title: "Let's Collaborate.",
+    description: 'Have a project idea, questions about system architecture, or just want to discuss tech? Feel free to reach out via the platforms below.',
+    location: 'Blitar, East Java, Indonesia',
+    builtWith: 'Built with React & Tailwind CSS.',
+    navHome: 'Home',
+    navAbout: 'About',
+    navExperience: 'Experience',
+    navProjects: 'Projects',
+  },
+};
+
 const Footer: React.FC = () => {
+  // State Bahasa
+  const [lang, setLang] = useState<Lang>('id');
+
+  // Load awal & listener untuk mendeteksi perubahan bahasa
+  useEffect(() => {
+    const loadLang = () => {
+      const savedLang = (localStorage.getItem('lang') as Lang) || 'id';
+      setLang(savedLang);
+    };
+
+    loadLang();
+
+    window.addEventListener('languageChange', loadLang);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lang') loadLang();
+    });
+
+    return () => {
+      window.removeEventListener('languageChange', loadLang);
+      window.removeEventListener('storage', loadLang);
+    };
+  }, []);
+
+  const t = translations[lang];
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer
       id="contact"
@@ -15,14 +69,14 @@ const Footer: React.FC = () => {
         <div className="flex flex-col items-center justify-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 transition-colors duration-300">
             <span className="h-2 w-2 rounded-full bg-[#8B5CF6] shadow-[0_0_8px_rgba(139,92,246,0.5)]" />
-            <span className="text-sm font-medium text-[var(--text-secondary)]">Kontak</span>
+            <span className="text-sm font-medium text-[var(--text-secondary)]">{t.badge}</span>
           </div>
 
           <h2 className="mt-6 text-3xl font-bold text-[var(--text-primary)] md:text-5xl transition-colors duration-300">
-            Mari Berkolaborasi.
+            {t.title}
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] transition-colors duration-300">
-            Punya ide proyek, pertanyaan tentang arsitektur sistem, atau sekadar ingin berdiskusi teknologi? Jangan ragu untuk menghubungi saya melalui platform di bawah ini.
+            {t.description}
           </p>
 
           <div className="mt-10 grid gap-4 w-full max-w-lg sm:grid-cols-3">
@@ -82,7 +136,7 @@ const Footer: React.FC = () => {
           <div className="mt-8 flex items-center justify-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--card-bg)] px-5 py-2 shadow-sm transition-colors duration-300">
             <MapPin className="h-4 w-4 text-[#8B5CF6]" />
             <span className="text-sm text-[var(--text-secondary)] transition-colors duration-300">
-              Blitar, Jawa Timur, Indonesia
+              {t.location}
             </span>
           </div>
         </div>
@@ -91,20 +145,20 @@ const Footer: React.FC = () => {
         <div className="mt-20 border-t border-[var(--border-color)] pt-8 transition-colors duration-300">
           <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between">
             <div className="text-sm text-[var(--text-secondary)] text-center md:text-left transition-colors duration-300">
-              © {new Date().getFullYear()} Zaky. Dibangun dengan React & Tailwind CSS.
+              © {currentYear} Zaky. {t.builtWith}
             </div>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">
               <a className="transition-colors hover:text-[var(--text-primary)]" href="#home">
-                Beranda
+                {t.navHome}
               </a>
               <a className="transition-colors hover:text-[var(--text-primary)]" href="#about">
-                Tentang
+                {t.navAbout}
               </a>
               <a className="transition-colors hover:text-[var(--text-primary)]" href="#experience">
-                Pengalaman
+                {t.navExperience}
               </a>
               <a className="transition-colors hover:text-[var(--text-primary)]" href="#projects">
-                Proyek
+                {t.navProjects}
               </a>
             </div>
           </div>

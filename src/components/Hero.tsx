@@ -4,13 +4,7 @@ import { motion } from 'framer-motion';
 
 import { apiBase } from '../config/api';
 
-// Ensure the API base is clean (no trailing slash)
-
-
-
-
 // --- Global CSS Variables & Transitions ---
-// Kita injeksikan CSS ini untuk Global Theme Controller (Website & Terminal)
 const globalStyles = `
   :root {
     --bg-primary: #0A0A0F;
@@ -159,10 +153,9 @@ const TerminalHistoryLine = ({ command, output }: HistoryItem) => (
 export default function App() {
   const [projectsCount, setProjectsCount] = useState<number | null>(null);
   
-// Theme State
-  // theme disimpan ke localStorage via command 'light'/'dark'
-  // (tidak dipakai langsung di UI)
+  // Theme & Language State
   const [, setTheme] = useState<string>('dark');
+  const [lang, setLang] = useState<'id' | 'en'>('id');
 
   // Terminal State
   const [inputValue, setInputValue] = useState('');
@@ -173,21 +166,12 @@ export default function App() {
       output: 'Muhammad Fairuz Zaky'
     },
     {
-      command: 'current_focus',
-      output: (
-        <div className="flex flex-col space-y-1">
-          <span>Building scalable REST APIs</span>
-          <span>Designing PostgreSQL databases</span>
-          <span>Learning system architecture</span>
-        </div>
-      )
-    },
-    {
       command: 'status',
       output: (
         <div className="flex flex-col space-y-1">
           <span>Portfolio system ready.</span>
-          <span>Type "light" or "dark" to change theme.</span>
+          <span>Type "light" / "dark" to change theme.</span>
+          <span>Type "id" / "en" to change language.</span>
         </div>
       )
     }
@@ -197,10 +181,13 @@ export default function App() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize Theme from LocalStorage (Default ke 'dark' jika kosong)
+  // Initialize Theme and Language from LocalStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedLang = (localStorage.getItem('lang') as 'id' | 'en') || 'id';
+    
     setTheme(savedTheme);
+    setLang(savedLang);
     document.documentElement.setAttribute('data-theme', savedTheme);
   }, []);
 
@@ -221,22 +208,16 @@ export default function App() {
     return () => { isMounted = false; };
   }, []);
 
-  // Mencegah peramban (browser) men-scroll kontainer pembungkus luar terminal saat input fokus
   useEffect(() => {
     const outerEl = outerRef.current;
     if (!outerEl) return;
-
     const handleScroll = () => {
-      if (outerEl.scrollTop !== 0) {
-        outerEl.scrollTop = 0;
-      }
+      if (outerEl.scrollTop !== 0) outerEl.scrollTop = 0;
     };
-
     outerEl.addEventListener('scroll', handleScroll);
     return () => outerEl.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-scroll halus saat ada riwayat baru (Command dieksekusi)
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTo({
@@ -246,7 +227,6 @@ export default function App() {
     }
   }, [history]);
 
-  // Kunci scroll instan saat mengetik tanpa animasi memantul
   useEffect(() => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
@@ -259,8 +239,8 @@ export default function App() {
 
     if (trimmed === '') return null;
 
+    // Theme command
     if (trimmed === 'light' || trimmed === 'dark') {
-      // Toggle Theme Logic
       setTheme(trimmed);
       localStorage.setItem('theme', trimmed);
       document.documentElement.setAttribute('data-theme', trimmed);
@@ -274,14 +254,36 @@ export default function App() {
       );
     }
 
+    // Language command
+    if (trimmed === 'id' || trimmed === 'en') {
+      setLang(trimmed as 'id' | 'en');
+      localStorage.setItem('lang', trimmed);
+
+      // ↓↓ Tambahkan kode ini agar Navbar tahu ada perubahan bahasa
+      window.dispatchEvent(new Event('languageChange'));
+
+      return (
+        <div className="flex flex-col space-y-1 mt-1">
+          <span>Switching language...</span>
+          <span className="text-[#27C93F] font-semibold">Language changed successfully.</span>
+          <span>Current language: {trimmed.toUpperCase()}</span>
+        </div>
+      );
+    }
+
+
+    if (trimmed === 'clear') {
+        setTimeout(() => setHistory([]), 10);
+        return null;
+    }
+
     // Invalid Command
     return (
       <div className="flex flex-col space-y-1 mt-1">
         <span className="text-[#FF5F56]">Command not found: {cmd}</span>
         <br />
         <span>Available commands:</span>
-        <span className="text-[var(--terminal-command)] font-medium">light</span>
-        <span className="text-[var(--terminal-command)] font-medium">dark</span>
+        <span className="text-[var(--terminal-command)] font-medium">light, dark, id, en, clear</span>
       </div>
     );
   };
@@ -290,10 +292,46 @@ export default function App() {
     if (e.key === 'Enter') {
       e.preventDefault();
       const output = handleCommandExecution(inputValue);
-      setHistory(prev => [...prev, { command: inputValue, output }]);
+      
+      // Khusus perintah 'clear', tidak dimasukkan ke history
+      if (inputValue.trim().toLowerCase() !== 'clear') {
+        setHistory(prev => [...prev, { command: inputValue, output }]);
+      }
       setInputValue('');
     }
   };
+
+  // Content Dictionary (Berdasarkan state lang)
+  const content = {
+    id: {
+      status: 'Sistem Aktif',
+      greeting: 'Hi, aku Zaky.',
+      descPart1: 'Muhammad Fairuz Zaky atau sebut saja Zaky. Mari Membangun API yang cepat, aman, dan scalable untuk aplikasi modern. Berfokus pada ekosistem',
+      descPart2: 'serta performa tinggi menggunakan',
+      descPart3: 'dan desain database',
+      btn: 'Lihat API',
+      stats: {
+        projects: 'Proyek Dibuat',
+        tech: 'Teknologi',
+        internship: 'Pengalaman Magang'
+      }
+    },
+    en: {
+      status: 'System Online',
+      greeting: "Hi, I'm Zaky.",
+      descPart1: "Muhammad Fairuz Zaky or just Zaky. Let's build fast, secure, and scalable APIs for modern applications. Focusing on the",
+      descPart2: "ecosystem, and high performance using",
+      descPart3: "with",
+      btn: 'View APIs',
+      stats: {
+        projects: 'Projects Built',
+        tech: 'Technologies',
+        internship: 'Internship Experience'
+      }
+    }
+  };
+
+  const t = content[lang]; // Shortcut untuk akses translasi
 
   return (
     <>
@@ -320,13 +358,13 @@ export default function App() {
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#06B6D4] to-[#22D3EE]">
                     <Server className="h-4 w-4 text-white" strokeWidth={2} />
                   </span>
-                  <span className="text-sm font-medium text-[var(--text-secondary)]">System Online • 2026</span>
+                  <span className="text-sm font-medium text-[var(--text-secondary)]">{t.status} • 2026</span>
                 </div>
               </Reveal>
 
               <Reveal delayMs={120}>
                 <h1 className="text-5xl font-bold leading-tight tracking-tight text-[var(--text-primary)] md:text-6xl">
-                  Hi, aku Zaky.
+                  {t.greeting}
                   <br/>
                   <TypewriterLoop />
                 </h1>
@@ -334,11 +372,10 @@ export default function App() {
 
               <Reveal delayMs={240}>
                 <p className="max-w-xl text-base leading-relaxed text-[var(--text-secondary)]">
-                  Muhammad Fairuz Zaky atau sebut saja Zaky. Mari Membangun API yang cepat, aman, dan scalable untuk aplikasi modern.
-                  Berfokus pada ekosistem{' '}
+                  {t.descPart1}{' '}
                   <strong className="text-[var(--text-primary)] font-medium">Node.js</strong> &{' '}
                   <strong className="text-[var(--text-primary)] font-medium">TypeScript</strong>,
-                  serta performa tinggi menggunakan <strong className="text-[var(--text-primary)] font-medium">Hono.js</strong> dan desain database{' '}
+                  {' '}{t.descPart2}{' '} <strong className="text-[var(--text-primary)] font-medium">Hono.js</strong> {t.descPart3}{' '}
                   <strong className="text-[var(--text-primary)] font-medium">PostgreSQL</strong>.
                 </p>
               </Reveal>
@@ -348,7 +385,7 @@ export default function App() {
                   href="#projects"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] px-6 py-3 text-sm font-medium text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02]"
                 >
-                  View APIs
+                  {t.btn}
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </Reveal>
@@ -357,15 +394,15 @@ export default function App() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
                   <div className="text-2xl font-bold text-[var(--text-primary)]">{projectsCount === null ? '...' : `${projectsCount}+`}</div>
-                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Projects Built</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">{t.stats.projects}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
                   <div className="text-2xl font-bold text-[var(--text-primary)]">5+</div>
-                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Technologies</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">{t.stats.tech}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
                   <div className="text-2xl font-bold text-[var(--text-primary)]">1</div>
-                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Internship Experience</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">{t.stats.internship}</div>
                 </div>
               </div>
             </div>
@@ -379,7 +416,7 @@ export default function App() {
                 className="relative rounded-xl border border-[var(--terminal-border)] bg-[var(--terminal-bg)] shadow-2xl overflow-hidden font-mono text-sm z-10 h-[520px] flex flex-col cursor-text"
                 onClick={() => inputRef.current?.focus()}
               >
-                {/* Terminal Header (TETAP FIXED, TIDAK AKAN PERNAH IKUT NAIK) */}
+                {/* Terminal Header */}
                 <div className="flex items-center gap-2 bg-[var(--terminal-header-bg)] px-4 py-3 border-b border-[var(--terminal-border)] shrink-0 select-none">
                   <div className="flex gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-[#FF5F56]" />
@@ -399,7 +436,7 @@ export default function App() {
                     <TerminalHistoryLine key={idx} command={item.command} output={item.output} />
                   ))}
 
-                  {/* Active Prompt wrapper dengan kelas 'relative' agar input terkunci di sini */}
+                  {/* Active Prompt */}
                   <div className="mb-2 relative">
                     <div className="flex flex-wrap gap-2 items-center">
                       <span className="text-[var(--terminal-prompt-user)] font-semibold">zaky@dev</span>
@@ -409,7 +446,6 @@ export default function App() {
                     <div className="flex gap-2 items-center mt-0.5">
                       <span className="text-[var(--terminal-prompt-dollar)]">$</span>
                       <span className="text-[var(--terminal-command)] break-all">{inputValue}</span>
-                      {/* Blinking Cursor */}
                       {isFocused && (
                         <motion.div
                           animate={{ opacity: [1, 0] }}
@@ -419,7 +455,7 @@ export default function App() {
                       )}
                     </div>
 
-                    {/* Hidden Input Layer dikunci di koordinat prompt aktif */}
+                    {/* Hidden Input Layer */}
                     <input
                       ref={inputRef}
                       type="text"
@@ -446,7 +482,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Spacer kecil di paling bawah */}
                   <div className="h-8 shrink-0" />
                 </div>
               </div>

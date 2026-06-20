@@ -8,7 +8,7 @@ interface SkillRow {
   category: string;
 }
 
-// Menggunakan cara aman untuk mengakses variabel lingkungan agar tidak memicu kegagalan kompilasi pada target ES2015
+// Menggunakan cara aman untuk mengakses variabel lingkungan
 const getApiUrl = (): string => {
   try {
     // @ts-ignore
@@ -23,7 +23,6 @@ const getApiUrl = (): string => {
 };
 
 const apiBase = getApiUrl();
-
 
 // --- Komponen Reveal Lokal ---
 interface RevealProps {
@@ -80,14 +79,39 @@ const CATEGORY_META: Record<
   },
 };
 
+// --- Multi-Language Dictionary ---
+type Lang = 'id' | 'en';
+
+const translations = {
+  id: {
+    badge: 'Keahlian',
+    headline: 'Teknologi & Ekosistem',
+    description: 'Kumpulan teknologi, bahasa pemrograman, dan alat yang saya gunakan untuk merancang dan membangun sistem digital yang andal.',
+    loading: 'Memuat...',
+    fetchError: 'Gagal mengambil data skills',
+    loadError: 'Gagal memuat skills',
+    categoryLabel: 'Kategori',
+  },
+  en: {
+    badge: 'Skills',
+    headline: 'Technology & Ecosystem',
+    description: 'A collection of technologies, programming languages, and tools I use to design and build reliable digital systems.',
+    loading: 'Loading...',
+    fetchError: 'Failed to fetch skills data',
+    loadError: 'Failed to load skills',
+    categoryLabel: 'Category',
+  },
+};
+
 type SkillCardProps = {
   title: string;
   icon: React.ReactNode;
   skills: string[];
   accentColor: string;
+  categoryLabel: string; // Tambahan prop untuk label multi-bahasa
 };
 
-const SkillCard: React.FC<SkillCardProps> = ({ title, icon, skills, accentColor }) => {
+const SkillCard: React.FC<SkillCardProps> = ({ title, icon, skills, accentColor, categoryLabel }) => {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:border-[var(--text-secondary)]/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
       <div
@@ -102,8 +126,12 @@ const SkillCard: React.FC<SkillCardProps> = ({ title, icon, skills, accentColor 
           </div>
           <div>
             <Reveal delayMs={80}>
-              <div className="text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">Kategori</div>
-              <div className="text-xl font-semibold text-[var(--text-primary)] transition-colors duration-300">{title}</div>
+              <div className="text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">
+                {categoryLabel}
+              </div>
+              <div className="text-xl font-semibold text-[var(--text-primary)] transition-colors duration-300">
+                {title}
+              </div>
             </Reveal>
           </div>
         </div>
@@ -127,6 +155,31 @@ const Skills: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<SkillRow[]>([]);
+  
+  // State Bahasa
+  const [lang, setLang] = useState<Lang>('id');
+
+  // Load awal & listener untuk mendeteksi perubahan bahasa
+  useEffect(() => {
+    const loadLang = () => {
+      const savedLang = (localStorage.getItem('lang') as Lang) || 'id';
+      setLang(savedLang);
+    };
+
+    loadLang();
+
+    window.addEventListener('languageChange', loadLang);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lang') loadLang();
+    });
+
+    return () => {
+      window.removeEventListener('languageChange', loadLang);
+      window.removeEventListener('storage', loadLang);
+    };
+  }, []);
+
+  const t = translations[lang];
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -134,18 +187,21 @@ const Skills: React.FC = () => {
       setError(null);
       try {
         const res = await fetch(`${apiBase}/skills`);
-        if (!res.ok) throw new Error(`Gagal mengambil data skills (${res.status})`);
+        if (!res.ok) throw new Error(`${t.fetchError} (${res.status})`);
         const data = (await res.json()) as SkillRow[];
         setRows(data);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Gagal memuat skills');
+        setError(e instanceof Error ? e.message : t.loadError);
       } finally {
         setLoading(false);
       }
     };
 
+    // Refetch jika ingin menyesuaikan error message dengan bahasa secara realtime,
+    // tapi karena error state disimpan dalam string, kita hanya fetch saat mount awal.
     fetchSkills();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   const grouped = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -171,18 +227,18 @@ const Skills: React.FC = () => {
             <Reveal delayMs={100}>
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 transition-colors duration-300">
                 <span className="h-2 w-2 rounded-full bg-[#8B5CF6] shadow-[0_0_8px_rgba(139,92,246,0.5)] animate-pulse" />
-                <span className="text-sm font-medium text-[var(--text-secondary)]">Keahlian</span>
+                <span className="text-sm font-medium text-[var(--text-secondary)]">{t.badge}</span>
               </div>
             </Reveal>
             <Reveal delayMs={200}>
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-[var(--text-primary)] md:text-4xl transition-colors duration-300">
-                Teknologi & Ekosistem
+                {t.headline}
               </h2>
             </Reveal>
           </div>
           <Reveal delayMs={300}>
             <p className="max-w-xl text-base leading-relaxed text-[var(--text-secondary)] md:text-right transition-colors duration-300">
-              Kumpulan teknologi, bahasa pemrograman, dan alat yang saya gunakan untuk merancang dan membangun sistem digital yang andal.
+              {t.description}
             </p>
           </Reveal>
         </div>
@@ -194,7 +250,7 @@ const Skills: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="mt-12 text-[var(--text-secondary)] text-sm transition-colors duration-300">Memuat...</div>
+          <div className="mt-12 text-[var(--text-secondary)] text-sm transition-colors duration-300">{t.loading}</div>
         ) : (
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {grouped.map(({ category, skills }, idx) => {
@@ -210,6 +266,7 @@ const Skills: React.FC = () => {
                     accentColor={accentColor}
                     icon={icon}
                     skills={skills}
+                    categoryLabel={t.categoryLabel}
                   />
                 </Reveal>
               );

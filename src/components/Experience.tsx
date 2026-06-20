@@ -16,13 +16,14 @@ type ExperienceApiRow = {
 type TimelineItemViewModel = {
   title: string;
   company: string;
-  period: string;
+  startDate: string;
+  endDate: string;
   description: string;
   type: 'work' | 'education';
   skills: string[];
 };
 
-// Menggunakan cara aman untuk mengakses variabel lingkungan agar tidak memicu kegagalan kompilasi pada target ES2015
+// Menggunakan cara aman untuk mengakses variabel lingkungan
 const getApiUrl = (): string => {
   try {
     // @ts-ignore
@@ -57,10 +58,63 @@ const Reveal = ({ children, delayMs = 0 }: RevealProps) => {
   );
 };
 
+// --- Multi-Language Dictionary ---
+type Lang = 'id' | 'en';
+
+const translations = {
+  id: {
+    badge: 'Pengalaman',
+    headline: 'Pengalaman & Pendidikan',
+    description: 'Rekam jejak pendidikan dan pengalaman magang saya dalam dunia pengembangan perangkat lunak.',
+    loading: 'Memuat...',
+    fetchError: 'Gagal mengambil data experiences',
+    loadError: 'Gagal memuat experiences',
+    present: 'Sekarang',
+    work: 'Pekerjaan',
+    education: 'Pendidikan',
+  },
+  en: {
+    badge: 'Experience',
+    headline: 'Experience & Education',
+    description: 'My educational background and internship track record in the world of software development.',
+    loading: 'Loading...',
+    fetchError: 'Failed to fetch experiences data',
+    loadError: 'Failed to load experiences',
+    present: 'Present',
+    work: 'Work',
+    education: 'Education',
+  },
+};
+
 const Experience: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<TimelineItemViewModel[]>([]);
+
+  // State Bahasa
+  const [lang, setLang] = useState<Lang>('id');
+
+  // Load awal & listener untuk mendeteksi perubahan bahasa
+  useEffect(() => {
+    const loadLang = () => {
+      const savedLang = (localStorage.getItem('lang') as Lang) || 'id';
+      setLang(savedLang);
+    };
+
+    loadLang();
+
+    window.addEventListener('languageChange', loadLang);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lang') loadLang();
+    });
+
+    return () => {
+      window.removeEventListener('languageChange', loadLang);
+      window.removeEventListener('storage', loadLang);
+    };
+  }, []);
+
+  const t = translations[lang];
 
   useEffect(() => {
     const fetchExperiences = async () => {
@@ -68,22 +122,21 @@ const Experience: React.FC = () => {
       setError(null);
       try {
         const res = await fetch(`${apiBase}/experiences`);
-        if (!res.ok) throw new Error(`Gagal mengambil data experiences (${res.status})`);
+        if (!res.ok) throw new Error(`${t.fetchError} (${res.status})`);
 
         const data = (await res.json()) as ExperienceApiRow[];
 
         const mapped: TimelineItemViewModel[] = (Array.isArray(data) ? data : []).map((ex) => {
-          const start = ex.startDate ? String(ex.startDate).slice(0, 10) : '';
-          const end = ex.endDate ? String(ex.endDate).slice(0, 10) : '';
-          const period = start && end ? `${start} - ${end}` : start ? `${start} - Present` : '—';
-
+          const startDate = ex.startDate ? String(ex.startDate).slice(0, 10) : '';
+          const endDate = ex.endDate ? String(ex.endDate).slice(0, 10) : '';
           const type: 'work' | 'education' = ex.type === 'education' ? 'education' : 'work';
           const skills: string[] = Array.isArray(ex.skills) ? ex.skills : [];
 
           return {
             title: ex.title,
             company: ex.organization,
-            period,
+            startDate,
+            endDate,
             description: ex.description ?? '',
             type,
             skills,
@@ -92,13 +145,14 @@ const Experience: React.FC = () => {
 
         setItems(mapped);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Gagal memuat experiences');
+        setError(e instanceof Error ? e.message : t.loadError);
       } finally {
         setLoading(false);
       }
     };
 
     fetchExperiences();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -108,19 +162,19 @@ const Experience: React.FC = () => {
           <Reveal delayMs={100}>
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 transition-colors duration-300">
               <span className="h-2 w-2 rounded-full bg-[#6366F1] shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-              <span className="text-sm font-medium text-[var(--text-secondary)]">Experience</span>
+              <span className="text-sm font-medium text-[var(--text-secondary)]">{t.badge}</span>
             </div>
           </Reveal>
           
           <Reveal delayMs={200}>
             <h2 className="mt-4 text-3xl font-bold text-[var(--text-primary)] md:text-4xl transition-colors duration-300">
-              Pengalaman & Pendidikan
+              {t.headline}
             </h2>
           </Reveal>
           
           <Reveal delayMs={300}>
             <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] transition-colors duration-300">
-              Rekam jejak pendidikan dan pengalaman magang saya dalam dunia pengembangan perangkat lunak.
+              {t.description}
             </p>
           </Reveal>
         </div>
@@ -132,51 +186,60 @@ const Experience: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="mt-10 text-[var(--text-secondary)] text-sm transition-colors duration-300">Memuat...</div>
+          <div className="mt-10 text-[var(--text-secondary)] text-sm transition-colors duration-300">{t.loading}</div>
         ) : (
           <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            {items.map((it, idx) => (
-              <Reveal key={`${it.title}-${idx}`} delayMs={150 * (idx % 2 + 1)}>
-                <div
-                  className="relative rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[var(--text-secondary)]/30"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] transition-colors duration-300">
-                        {it.type === 'work' ? (
-                          <Briefcase className="h-5 w-5 text-[#6366F1]" strokeWidth={2} />
-                        ) : (
-                          <GraduationCap className="h-5 w-5 text-[#8B5CF6]" strokeWidth={2} />
-                        )}
+            {items.map((it, idx) => {
+              // Format periode secara dinamis berdasarkan bahasa aktif
+              const periodLabel = it.startDate && it.endDate 
+                ? `${it.startDate} - ${it.endDate}` 
+                : it.startDate 
+                  ? `${it.startDate} - ${t.present}` 
+                  : '—';
+
+              return (
+                <Reveal key={`${it.title}-${idx}`} delayMs={150 * (idx % 2 + 1)}>
+                  <div
+                    className="relative rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[var(--text-secondary)]/30"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] transition-colors duration-300">
+                          {it.type === 'work' ? (
+                            <Briefcase className="h-5 w-5 text-[#6366F1]" strokeWidth={2} />
+                          ) : (
+                            <GraduationCap className="h-5 w-5 text-[#8B5CF6]" strokeWidth={2} />
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">{it.company}</div>
+                          <div className="text-xl font-semibold text-[var(--text-primary)] transition-colors duration-300">{it.title}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">{it.company}</div>
-                        <div className="text-xl font-semibold text-[var(--text-primary)] transition-colors duration-300">{it.title}</div>
+                      <div className="rounded-lg border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 w-max text-xs font-medium text-[var(--text-secondary)] transition-colors duration-300">
+                        {periodLabel}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 w-max text-xs font-medium text-[var(--text-secondary)] transition-colors duration-300">
-                      {it.period}
-                    </div>
-                  </div>
 
-                  <p className="mt-4 text-sm leading-relaxed text-[var(--text-secondary)] transition-colors duration-300">{it.description}</p>
+                    <p className="mt-4 text-sm leading-relaxed text-[var(--text-secondary)] transition-colors duration-300">{it.description}</p>
 
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 text-xs font-medium text-[var(--text-primary)] transition-colors duration-300">
-                      {it.type === 'work' ? 'Work' : 'Education'}
-                    </span>
-                    {it.skills.map((skill, sIdx) => (
-                      <span key={sIdx} className="rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] transition-colors duration-300">
-                        {skill}
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 text-xs font-medium text-[var(--text-primary)] transition-colors duration-300">
+                        {it.type === 'work' ? t.work : t.education}
                       </span>
-                    ))}
-                  </div>
+                      {it.skills.map((skill, sIdx) => (
+                        <span key={sIdx} className="rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] transition-colors duration-300">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
 
-                  {/* Efek garis gradasi bawah */}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-[#6366F1]/0 via-[#6366F1]/60 to-[#8B5CF6]/0 opacity-50" />
-                </div>
-              </Reveal>
-            ))}
+                    {/* Efek garis gradasi bawah */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-[#6366F1]/0 via-[#6366F1]/60 to-[#8B5CF6]/0 opacity-50" />
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
         )}
       </div>
@@ -184,4 +247,4 @@ const Experience: React.FC = () => {
   );
 };
 
-export default Experience;  
+export default Experience;
