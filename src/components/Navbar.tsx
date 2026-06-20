@@ -260,61 +260,76 @@ const Navbar: React.FC = () => {
         </div>
       </nav>
 
-      {/* Mobile overlay */}
+      {/* Mobile Backdrop + Popup */}
       <div
-        id="mobile-menu"
-        className={`fixed inset-0 z-40 md:hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ease-out ${
           isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         aria-hidden={!isMobileMenuOpen}
       >
         <div
-          className="absolute inset-0 bg-[var(--bg-primary)]/80 backdrop-blur-sm transition-colors duration-300"
+          className="absolute inset-0 bg-[var(--bg-primary)]/80 backdrop-blur-sm"
           onClick={closeMobileMenu}
           aria-hidden="true"
         />
+
+        {/* Mobile Menu Popup */}
         <div
-          className={`absolute top-20 left-0 right-0 bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border-color)] shadow-[0_10px_40px_rgba(0,0,0,0.15)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transition-colors duration-300 ${
-            isMobileMenuOpen ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
+          id="mobile-menu"
+          className={`fixed top-20 right-4 z-40 w-64 origin-top transition-all duration-300 ease-out md:hidden ${
+            isMobileMenuOpen
+              ? 'opacity-100 scale-100 translate-y-0'
+              : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
           }`}
         >
-          <nav className="px-4 py-6 space-y-1" aria-label="Mobile navigation">
-            {NAV_ITEMS.map((item) => {
-              const isActive = activeSection === item.href.replace('#', '');
-              return (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  onClick={(e) => handleNavClick(e, item.href)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
-                    isActive
-                      ? 'text-[#06B6D4] bg-[#06B6D4]/10'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.04]'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full transition-all duration-300 ${
-                      isActive
-                        ? 'bg-[#06B6D4] shadow-[0_0_8px_rgba(6,182,212,0.5)]'
-                        : 'bg-[var(--text-secondary)]'
-                    }`}
-                  />
-                  {t[item.key]}
-                </a>
-              );
-            })}
+          <div
+            className={`overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-primary)]/90 backdrop-blur-xl shadow-2xl p-2 transform-gpu transition-transform duration-300 ease-out ${
+              isMobileMenuOpen ? 'animate-[menuIn_220ms_ease-out]' : 'animate-[menuOut_180ms_ease-out]'
+            }`}
+          >
+            <style>{`
+              @keyframes menuIn {
+                0% { transform: translateY(-10px) scale(0.98); opacity: 0.55; }
+                60% { transform: translateY(2px) scale(1.005); opacity: 1; }
+                100% { transform: translateY(0) scale(1); opacity: 1; }
+              }
 
-            <div className="pt-4 mt-4 border-t border-[var(--border-color)]">
-              <a
-                href="#contact"
-                onClick={(e) => handleNavClick(e, '#contact')}
-                className="flex items-center justify-center gap-2 w-full px-6 py-3 text-base font-medium text-white rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-[0.98]"
-              >
-                {t.cta}
-              </a>
-            </div>
-          </nav>
+              @keyframes menuOut {
+                0% { transform: translateY(0) scale(1); opacity: 1; }
+                100% { transform: translateY(-6px) scale(0.98); opacity: 0; }
+              }
+            `}</style>
+
+            <nav className="space-y-1" aria-label="Mobile navigation">
+              {NAV_ITEMS.map((item) => {
+                const isActive = activeSection === item.href.replace('#', '');
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'text-[#06B6D4] bg-[#06B6D4]/10'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.04]'
+                    }`}
+                  >
+                    {t[item.key]}
+                  </a>
+                );
+              })}
+
+              <div className="pt-2 mt-2 border-t border-[var(--border-color)]">
+                <a
+                  href="#contact"
+                  onClick={(e) => handleNavClick(e, '#contact')}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-white rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] hover:brightness-110 transition-all"
+                >
+                  {t.cta}
+                </a>
+              </div>
+            </nav>
+          </div>
         </div>
       </div>
     </header>
