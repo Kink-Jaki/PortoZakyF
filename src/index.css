@@ -8,8 +8,8 @@ html {
 
 body {
   margin: 0;
-  background: #0A0A0F;
-  color: #F8F8FC;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   overflow-x: hidden; /* hindari horizontal scroll dari elemen absolute/fixed */
 }
 

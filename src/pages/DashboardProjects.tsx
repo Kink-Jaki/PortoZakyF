@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Edit3,
   Plus,
@@ -16,6 +16,7 @@ import { authHeaders, getToken } from '../auth/auth';
 // ============================================================================
 // TYPES & INTERFACES
 // ============================================================================
+
 type Project = {
   id: number;
   title: string;
@@ -102,7 +103,8 @@ const SectionShell: React.FC<{
 };
 
 export default function DashboardProjects() {
-  const { isLoggedIn } = useAuth();
+  // isLoggedIn tidak dipakai untuk guard redirect (menggunakan getToken sinkron)
+  useAuth();
 
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -121,10 +123,13 @@ export default function DashboardProjects() {
     imageFile: null as File | null,
   });
 
-  const authToken = useMemo(() => getToken(), []);
+
+
+
   useEffect(() => {
-    if (!authToken) window.location.pathname = '/';
-  }, [authToken]);
+    if (!getToken()) window.location.pathname = '/';
+  }, []);
+
 
 
   const refresh = async () => {
@@ -146,7 +151,9 @@ export default function DashboardProjects() {
   }, []);
 
   const ensureLoggedInOrRedirect = () => {
-    if (!isLoggedIn) window.location.pathname = '/';
+    // gunakan localStorage secara sinkron agar redirect tidak terjadi
+    // saat state AuthProvider belum ter-boot
+    if (!getToken()) window.location.pathname = '/';
   };
 
   const resetProjectForm = () =>
@@ -177,8 +184,9 @@ export default function DashboardProjects() {
 
       if (projectForm.id) {
         await fetch(`${apiBase}/project/${projectForm.id}`, {
+
           method: 'PUT',
-          headers: { ...authHeaders(), },
+          headers: { ...authHeaders() },
           body: formData,
         }).then(async (res) => {
           if (!res.ok) {

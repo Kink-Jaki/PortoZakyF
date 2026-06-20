@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Monitor, Server, Smartphone, Database, Wrench, Gamepad2 } from 'lucide-react';
-import { Reveal } from './motion';
+import { motion } from 'framer-motion';
 
 interface SkillRow {
   id: number;
@@ -8,7 +8,41 @@ interface SkillRow {
   category: string;
 }
 
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+// Menggunakan cara aman untuk mengakses variabel lingkungan agar tidak memicu kegagalan kompilasi pada target ES2015
+const getApiUrl = (): string => {
+  try {
+    // @ts-ignore
+    const meta = import.meta;
+    if (meta && meta.env && meta.env.VITE_API_URL) {
+      return meta.env.VITE_API_URL;
+    }
+  } catch (e) {
+    // Abaikan jika tidak didukung
+  }
+  return import.meta.env.VITE_API_URL ?? 'https://zakyportoapi-production.up.railway.app';
+};
+
+const apiBase = getApiUrl();
+
+
+// --- Komponen Reveal Lokal ---
+interface RevealProps {
+  children: ReactNode;
+  delayMs?: number;
+}
+
+const Reveal = ({ children, delayMs = 0 }: RevealProps) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: delayMs / 1000 }}
+    >
+      {children}
+    </motion.div>
+  );
+};
 
 const CATEGORY_META: Record<
   string,
@@ -55,21 +89,21 @@ type SkillCardProps = {
 
 const SkillCard: React.FC<SkillCardProps> = ({ title, icon, skills, accentColor }) => {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#12121A]/70 p-6 shadow-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+    <div className="group relative overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-6 shadow-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-1 hover:border-[var(--text-secondary)]/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
       <div
-        className="absolute -inset-1 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-20"
+        className="absolute -inset-1 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-20 pointer-events-none"
         style={{ backgroundColor: accentColor }}
       />
 
       <div className="relative">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/10">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] transition-all duration-300 group-hover:scale-110 group-hover:bg-[var(--text-primary)]/[0.04]">
             {icon}
           </div>
           <div>
             <Reveal delayMs={80}>
-              <div className="text-sm font-medium text-[#A0A0B0]">Kategori</div>
-              <div className="text-xl font-semibold text-[#F8F8FC]">{title}</div>
+              <div className="text-sm font-medium text-[var(--text-secondary)] transition-colors duration-300">Kategori</div>
+              <div className="text-xl font-semibold text-[var(--text-primary)] transition-colors duration-300">{title}</div>
             </Reveal>
           </div>
         </div>
@@ -78,7 +112,7 @@ const SkillCard: React.FC<SkillCardProps> = ({ title, icon, skills, accentColor 
           {skills.map((skill) => (
             <div
               key={skill}
-              className="inline-flex items-center rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-sm font-medium text-[#D1D1DF] transition-colors duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center rounded-lg border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors duration-200 hover:border-[var(--text-primary)]/30 hover:bg-[var(--text-primary)]/[0.04] hover:text-[var(--text-primary)]"
             >
               {skill}
             </div>
@@ -120,7 +154,6 @@ const Skills: React.FC = () => {
       map.set(r.category, [...cur, r.name]);
     }
 
-    // preserve order based on meta list
     const order = Object.keys(CATEGORY_META);
     const categories = Array.from(map.keys()).sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
@@ -131,19 +164,27 @@ const Skills: React.FC = () => {
   }, [rows]);
 
   return (
-    <section id="skills" className="py-20 md:py-24" aria-label="Skills">
+    <section id="skills" className="py-20 md:py-24 bg-[var(--bg-primary)] transition-colors duration-300" aria-label="Skills">
       <div className="mx-auto max-w-7xl px-4 md:px-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-              <span className="h-2 w-2 rounded-full bg-[#8B5CF6] shadow-[0_0_8px_rgba(139,92,246,0.5)] animate-pulse" />
-              <span className="text-sm font-medium text-[#A0A0B0]">Keahlian</span>
-            </div>
-            <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#F8F8FC] md:text-4xl">Teknologi & Ekosistem</h2>
+            <Reveal delayMs={100}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 transition-colors duration-300">
+                <span className="h-2 w-2 rounded-full bg-[#8B5CF6] shadow-[0_0_8px_rgba(139,92,246,0.5)] animate-pulse" />
+                <span className="text-sm font-medium text-[var(--text-secondary)]">Keahlian</span>
+              </div>
+            </Reveal>
+            <Reveal delayMs={200}>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-[var(--text-primary)] md:text-4xl transition-colors duration-300">
+                Teknologi & Ekosistem
+              </h2>
+            </Reveal>
           </div>
-          <p className="max-w-xl text-base leading-relaxed text-[#A0A0B0] md:text-right">
-            Kumpulan teknologi, bahasa pemrograman, dan alat yang saya gunakan untuk merancang dan membangun sistem digital yang andal.
-          </p>
+          <Reveal delayMs={300}>
+            <p className="max-w-xl text-base leading-relaxed text-[var(--text-secondary)] md:text-right transition-colors duration-300">
+              Kumpulan teknologi, bahasa pemrograman, dan alat yang saya gunakan untuk merancang dan membangun sistem digital yang andal.
+            </p>
+          </Reveal>
         </div>
 
         {error && (
@@ -153,23 +194,24 @@ const Skills: React.FC = () => {
         )}
 
         {loading ? (
-          <div className="mt-12 text-[#A0A0B0] text-sm">Memuat...</div>
+          <div className="mt-12 text-[var(--text-secondary)] text-sm transition-colors duration-300">Memuat...</div>
         ) : (
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {grouped.map(({ category, skills }) => {
+            {grouped.map(({ category, skills }, idx) => {
               const meta = CATEGORY_META[category];
               const title = meta?.title ?? category;
               const accentColor = meta?.accentColor ?? '#06B6D4';
               const icon = meta?.icon ?? <span />;
 
               return (
-                <SkillCard
-                  key={category}
-                  title={title}
-                  accentColor={accentColor}
-                  icon={icon}
-                  skills={skills}
-                />
+                <Reveal key={category} delayMs={150 * (idx % 3 + 1)}>
+                  <SkillCard
+                    title={title}
+                    accentColor={accentColor}
+                    icon={icon}
+                    skills={skills}
+                  />
+                </Reveal>
               );
             })}
           </div>
@@ -180,4 +222,3 @@ const Skills: React.FC = () => {
 };
 
 export default Skills;
-

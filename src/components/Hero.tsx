@@ -1,9 +1,80 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import React, { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Server, ArrowRight } from 'lucide-react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import { apiBase } from '../config/api';
 
+// Ensure the API base is clean (no trailing slash)
+
+
+
+
+// --- Global CSS Variables & Transitions ---
+// Kita injeksikan CSS ini untuk Global Theme Controller (Website & Terminal)
+const globalStyles = `
+  :root {
+    --bg-primary: #0A0A0F;
+    --text-primary: #F8F8FC;
+    --text-secondary: #A0A0B0;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --card-bg: rgba(18, 18, 26, 0.7);
+    --system-badge-bg: rgba(255, 255, 255, 0.05);
+
+    /* Terminal Dark Colors (Default) */
+    --terminal-bg: #0F111A;
+    --terminal-header-bg: #1A1C23;
+    --terminal-text: #E2E8F0;
+    --terminal-text-muted: #A6ACCD;
+    --terminal-header-text: #8F93A2;
+    --terminal-prompt-dollar: #FFFFFF;
+    --terminal-border: rgba(255, 255, 255, 0.1);
+    --terminal-prompt-user: #27C93F;
+    --terminal-prompt-env: #C792EA;
+    --terminal-prompt-dir: #FFCB6B;
+    --terminal-command: #89DDFF;
+    --terminal-cursor: #A6ACCD;
+  }
+
+  [data-theme='light'] {
+    --bg-primary: #f8fafc;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --card-bg: rgba(255, 255, 255, 0.8);
+    --system-badge-bg: rgba(0, 0, 0, 0.05);
+
+    /* Terminal Light Colors */
+    --terminal-bg: #F1F5F9;
+    --terminal-header-bg: #E2E8F0;
+    --terminal-text: #1E293B;
+    --terminal-text-muted: #475569;
+    --terminal-header-text: #64748B;
+    --terminal-prompt-dollar: #0F172A;
+    --terminal-border: rgba(0, 0, 0, 0.1);
+    --terminal-prompt-user: #16A34A;
+    --terminal-prompt-env: #7C3AED;
+    --terminal-prompt-dir: #D97706;
+    --terminal-command: #0284C7;
+    --terminal-cursor: #475569;
+  }
+
+  /* Smooth Transition Global */
+  body, section, div, span, p, h1, a {
+    transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 300ms ease;
+  }
+
+  /* Hide Scrollbar for Terminal */
+  .terminal-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .terminal-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .terminal-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+  }
+`;
 
 // --- Komponen Pengetik Font Loop ---
 const TypewriterLoop = () => {
@@ -63,270 +134,327 @@ const Reveal = ({ children, delayMs = 0 }: RevealProps) => {
   );
 };
 
-interface TerminalBlockProps {
+// --- Terminal Logic & Components ---
+
+interface HistoryItem {
   command: string;
-  output: ReactNode;
-  promptDelay: number;
-  typeDelay: number;
-  outputDelay: number;
+  output: ReactNode | null;
 }
 
-const TerminalBlock = ({ command, output, promptDelay, typeDelay, outputDelay }: TerminalBlockProps) => {
-  const [typedText, setTypedText] = useState('');
-  const ref = useRef<HTMLDivElement | null>(null);
-  const isInView = useInView(ref, { once: true });
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    const timeout = setTimeout(() => {
-      let currentIndex = 0;
-      const interval = setInterval(() => {
-        setTypedText(command.slice(0, currentIndex + 1));
-        currentIndex++;
-        if (currentIndex >= command.length) {
-          clearInterval(interval);
-        }
-      }, 40);
-
-      return () => clearInterval(interval);
-    }, typeDelay);
-
-    return () => clearTimeout(timeout);
-  }, [isInView, command, typeDelay]);
-
-  return (
-    <div ref={ref} className="mb-5">
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.2, delay: promptDelay / 1000 }}
-      >
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-[#27C93F] font-semibold">zaky@dev</span>
-          <span className="text-[#C792EA]">MINGW64</span>
-          <span className="text-[#FFCB6B]">~</span>
-        </div>
-        <div className="flex gap-2 mt-0.5">
-          <span className="text-white">$</span>
-          <span className="text-[#89DDFF]">{typedText}</span>
-        </div>
-      </motion.div>
-
-      {output && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.2, delay: outputDelay / 1000 }}
-          className="mt-1"
-        >
-          {output}
-        </motion.div>
-      )}
+const TerminalHistoryLine = ({ command, output }: HistoryItem) => (
+  <div className="mb-5">
+    <div className="flex flex-wrap gap-2 items-center">
+      <span className="text-[var(--terminal-prompt-user)] font-semibold">zaky@dev</span>
+      <span className="text-[var(--terminal-prompt-env)]">MINGW64</span>
+      <span className="text-[var(--terminal-prompt-dir)]">~</span>
     </div>
-  );
-};
+    <div className="flex gap-2 mt-0.5">
+      <span className="text-[var(--terminal-prompt-dollar)]">$</span>
+      <span className="text-[var(--terminal-command)] break-all">{command}</span>
+    </div>
+    {output && <div className="mt-1 text-[var(--terminal-text-muted)]">{output}</div>}
+  </div>
+);
 
 export default function App() {
   const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  
+// Theme State
+  // theme disimpan ke localStorage via command 'light'/'dark'
+  // (tidak dipakai langsung di UI)
+  const [, setTheme] = useState<string>('dark');
 
+  // Terminal State
+  const [inputValue, setInputValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([
+    {
+      command: 'whoami',
+      output: 'Muhammad Fairuz Zaky'
+    },
+    {
+      command: 'current_focus',
+      output: (
+        <div className="flex flex-col space-y-1">
+          <span>Building scalable REST APIs</span>
+          <span>Designing PostgreSQL databases</span>
+          <span>Learning system architecture</span>
+        </div>
+      )
+    },
+    {
+      command: 'status',
+      output: (
+        <div className="flex flex-col space-y-1">
+          <span>Portfolio system ready.</span>
+          <span>Type "light" or "dark" to change theme.</span>
+        </div>
+      )
+    }
+  ]);
+
+  const outerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize Theme from LocalStorage (Default ke 'dark' jika kosong)
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }, []);
+
+  // Fetch Projects Mock
   useEffect(() => {
     let isMounted = true;
-
     async function fetchProjectsCount() {
       try {
-        const res = await fetch(`${apiBase}/project`, {
-          method: 'GET',
-        });
-
-        if (!res.ok) throw new Error(`Failed to fetch projects: ${res.status}`);
-        const data = (await res.json()) as unknown[];
-
-        if (isMounted) {
-          setProjectsCount(Array.isArray(data) ? data.length : 0);
-        }
+        const res = await fetch(`${apiBase}/project`, { method: 'GET' });
+        if (!res.ok) throw new Error(`Failed to fetch`);
+        const data = await res.json();
+        if (isMounted) setProjectsCount(Array.isArray(data) ? data.length : 0);
       } catch {
         if (isMounted) setProjectsCount(0);
       }
     }
-
     fetchProjectsCount();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
-  return (
-    <section
+  // Mencegah peramban (browser) men-scroll kontainer pembungkus luar terminal saat input fokus
+  useEffect(() => {
+    const outerEl = outerRef.current;
+    if (!outerEl) return;
 
-      id="home"
-      className="relative overflow-hidden min-h-screen bg-[#0A0A0F]"
-      aria-label="Hero"
-    >
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-[#06B6D4]/25 blur-3xl" />
-        <div className="absolute -top-10 left-[-4rem] h-[16rem] w-[16rem] rounded-full bg-[#22D3EE]/20 blur-2xl" />
-        <div className="absolute top-[20rem] right-[-5rem] h-[18rem] w-[18rem] rounded-full bg-[#06B6D4]/10 blur-2xl" />
+    const handleScroll = () => {
+      if (outerEl.scrollTop !== 0) {
+        outerEl.scrollTop = 0;
+      }
+    };
+
+    outerEl.addEventListener('scroll', handleScroll);
+    return () => outerEl.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Auto-scroll halus saat ada riwayat baru (Command dieksekusi)
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTo({
+        top: terminalRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [history]);
+
+  // Kunci scroll instan saat mengetik tanpa animasi memantul
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [inputValue]);
+
+  // Terminal Commands Processing
+  const handleCommandExecution = (cmd: string) => {
+    const trimmed = cmd.trim().toLowerCase();
+
+    if (trimmed === '') return null;
+
+    if (trimmed === 'light' || trimmed === 'dark') {
+      // Toggle Theme Logic
+      setTheme(trimmed);
+      localStorage.setItem('theme', trimmed);
+      document.documentElement.setAttribute('data-theme', trimmed);
+
+      return (
+        <div className="flex flex-col space-y-1 mt-1">
+          <span>Switching theme...</span>
+          <span className="text-[#27C93F] font-semibold">Theme changed successfully.</span>
+          <span>Current theme: {trimmed.toUpperCase()}</span>
+        </div>
+      );
+    }
+
+    // Invalid Command
+    return (
+      <div className="flex flex-col space-y-1 mt-1">
+        <span className="text-[#FF5F56]">Command not found: {cmd}</span>
+        <br />
+        <span>Available commands:</span>
+        <span className="text-[var(--terminal-command)] font-medium">light</span>
+        <span className="text-[var(--terminal-command)] font-medium">dark</span>
       </div>
+    );
+  };
 
-      <div className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-28">
-        <div className="grid items-center gap-10 md:grid-cols-2">
-          <div className="space-y-6">
-            <Reveal delayMs={0}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-[0_0_20px_rgba(6,182,212,0.08)]">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#06B6D4] to-[#22D3EE]">
-                  <Server className="h-4 w-4 text-white" strokeWidth={2} />
-                </span>
-                <span className="text-sm font-medium text-[#A0A0B0]">System Online • 2026</span>
-              </div>
-            </Reveal>
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const output = handleCommandExecution(inputValue);
+      setHistory(prev => [...prev, { command: inputValue, output }]);
+      setInputValue('');
+    }
+  };
 
-            <Reveal delayMs={120}>
-              <h1 className="text-5xl font-bold leading-tight tracking-tight text-[#F8F8FC] md:text-6xl">
-                Hi, aku Zaky.
-                <TypewriterLoop />
-              </h1>
-            </Reveal>
+  return (
+    <>
+      <style>{globalStyles}</style>
 
-            <Reveal delayMs={240}>
-              <p className="max-w-xl text-base leading-relaxed text-[#A0A0B0]">
-                Muhammad Fairuz Zaky atau sebut saja Zaky. Mari Membangun API yang cepat, aman, dan scalable untuk aplikasi modern.
-                Berfokus pada ekosistem{' '}
-                <strong className="text-[#F8F8FC] font-medium">Node.js</strong> &{' '}
-                <strong className="text-[#F8F8FC] font-medium">TypeScript</strong>,
-                serta performa tinggi menggunakan <strong className="text-[#F8F8FC] font-medium">Hono.js</strong> dan desain database{' '}
-                <strong className="text-[#F8F8FC] font-medium">PostgreSQL</strong>.
-              </p>
-            </Reveal>
+      <section
+        id="home"
+        className="relative overflow-hidden min-h-screen bg-[var(--bg-primary)] transition-colors duration-300"
+        aria-label="Hero"
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-40 left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-[#06B6D4]/25 blur-3xl" />
+          <div className="absolute -top-10 left-[-4rem] h-[16rem] w-[16rem] rounded-full bg-[#22D3EE]/20 blur-2xl" />
+          <div className="absolute top-[20rem] right-[-5rem] h-[18rem] w-[18rem] rounded-full bg-[#06B6D4]/10 blur-2xl" />
+        </div>
 
-            <Reveal delayMs={360}>
-              <a
-                href="#projects"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] px-6 py-3 text-sm font-medium text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02]"
-              >
-                View APIs
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </Reveal>
+        <div className="mx-auto max-w-7xl px-4 py-24 md:px-8 md:py-28 relative z-10">
+          <div className="grid items-center gap-10 md:grid-cols-2">
+            
+            {/* Left Content */}
+            <div className="space-y-6">
+              <Reveal delayMs={0}>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 shadow-[0_0_20px_rgba(6,182,212,0.08)]">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#06B6D4] to-[#22D3EE]">
+                    <Server className="h-4 w-4 text-white" strokeWidth={2} />
+                  </span>
+                  <span className="text-sm font-medium text-[var(--text-secondary)]">System Online • 2026</span>
+                </div>
+              </Reveal>
 
-            {/* Stats */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-[#12121A]/70 p-5 shadow-md">
-                <div className="text-2xl font-bold text-[#F8F8FC]">{projectsCount === null ? '...' : `${projectsCount}+`}</div>
-                <div className="mt-1 text-sm text-[#A0A0B0]">Projects Built</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-[#12121A]/70 p-5 shadow-md">
-                <div className="text-2xl font-bold text-[#F8F8FC]">5+</div>
-                <div className="mt-1 text-sm text-[#A0A0B0]">Technologies</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-[#12121A]/70 p-5 shadow-md">
-                <div className="text-2xl font-bold text-[#F8F8FC]">1</div>
-                <div className="mt-1 text-sm text-[#A0A0B0]">Internship Experience</div>
+              <Reveal delayMs={120}>
+                <h1 className="text-5xl font-bold leading-tight tracking-tight text-[var(--text-primary)] md:text-6xl">
+                  Hi, aku Zaky.
+                  <br/>
+                  <TypewriterLoop />
+                </h1>
+              </Reveal>
+
+              <Reveal delayMs={240}>
+                <p className="max-w-xl text-base leading-relaxed text-[var(--text-secondary)]">
+                  Muhammad Fairuz Zaky atau sebut saja Zaky. Mari Membangun API yang cepat, aman, dan scalable untuk aplikasi modern.
+                  Berfokus pada ekosistem{' '}
+                  <strong className="text-[var(--text-primary)] font-medium">Node.js</strong> &{' '}
+                  <strong className="text-[var(--text-primary)] font-medium">TypeScript</strong>,
+                  serta performa tinggi menggunakan <strong className="text-[var(--text-primary)] font-medium">Hono.js</strong> dan desain database{' '}
+                  <strong className="text-[var(--text-primary)] font-medium">PostgreSQL</strong>.
+                </p>
+              </Reveal>
+
+              <Reveal delayMs={360}>
+                <a
+                  href="#projects"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] px-6 py-3 text-sm font-medium text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02]"
+                >
+                  View APIs
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Reveal>
+
+              {/* Stats */}
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
+                  <div className="text-2xl font-bold text-[var(--text-primary)]">{projectsCount === null ? '...' : `${projectsCount}+`}</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Projects Built</div>
+                </div>
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
+                  <div className="text-2xl font-bold text-[var(--text-primary)]">5+</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Technologies</div>
+                </div>
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 shadow-md">
+                  <div className="text-2xl font-bold text-[var(--text-primary)]">1</div>
+                  <div className="mt-1 text-sm text-[var(--text-secondary)]">Internship Experience</div>
+                </div>
               </div>
             </div>
-          </div>
 
+            {/* Right Content - Interactive Terminal */}
+            <div className="relative">
+              <div className="absolute -inset-2 rounded-[1.2rem] bg-gradient-to-r from-[#06B6D4]/20 to-[#22D3EE]/20 blur-xl" />
 
-          <div className="relative">
-            <div className="absolute -inset-2 rounded-[1.2rem] bg-gradient-to-r from-[#06B6D4]/20 to-[#22D3EE]/20 blur-xl" />
-
-            <div className="relative rounded-xl border border-white/10 bg-[#0F111A] shadow-2xl overflow-hidden font-mono text-sm z-10 min-h-[520px]">
-              <div className="flex items-center gap-2 bg-[#1A1C23] px-4 py-3 border-b border-white/10">
-                <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-[#FF5F56]" />
-                  <div className="h-3 w-3 rounded-full bg-[#FFBD2E]" />
-                  <div className="h-3 w-3 rounded-full bg-[#27C93F]" />
-                </div>
-                <div className="ml-2 text-xs text-[#8F93A2] font-sans">MINGW64:/c/Users/Zaky</div>
-              </div>
-
-              <div className="p-5 text-[#E2E8F0] text-xs sm:text-sm h-full">
-                <TerminalBlock
-                  command="whoami"
-                  output={<span className="text-[#A6ACCD]">Muhammad Fairuz Zaky</span>}
-                  promptDelay={300}
-                  typeDelay={600}
-                  outputDelay={1100}
-                />
-
-                <TerminalBlock
-                  command="cat current_focus.txt"
-                  output={
-                    <div className="text-[#A6ACCD] flex flex-col space-y-1">
-                      <span>Building scalable REST APIs</span>
-                      <span>Designing PostgreSQL databases</span>
-                      <span>Learning system architecture</span>
-                    </div>
-                  }
-                  promptDelay={1600}
-                  typeDelay={1900}
-                  outputDelay={2800}
-                />
-
-                <TerminalBlock
-                  command="ls tech_stack/"
-                  output={
-                    <div className="text-[#A6ACCD] flex flex-col space-y-1">
-                      <span>Hono.js</span>
-                      <span>TypeScript</span>
-                      <span>PostgreSQL</span>
-                      <span>Railway</span>
-                      <span>Docker</span>
-                    </div>
-                  }
-                  promptDelay={3300}
-                  typeDelay={3600}
-                  outputDelay={4300}
-                />
-
-                <TerminalBlock
-                  command="git log --oneline -1"
-                  output={
-                    <div className="text-[#A6ACCD]">
-                      <span className="text-[#E5C07B]">a1b2c3d</span> feat: deploy portfolio API to production
-                    </div>
-                  }
-                  promptDelay={4800}
-                  typeDelay={5100}
-                  outputDelay={6000}
-                />
-
-                <TerminalBlock
-                  command="echo $STATUS"
-                  output={<span className="text-[#06B6D4] font-semibold">AVAILABLE_FOR_INTERNSHIP</span>}
-                  promptDelay={6500}
-                  typeDelay={6800}
-                  outputDelay={7400}
-                />
-
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.2, delay: 7900 / 1000 }}
-                >
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-[#27C93F] font-semibold">zaky@dev</span>
-                    <span className="text-[#C792EA]">MINGW64</span>
-                    <span className="text-[#FFCB6B]">~</span>
+              <div 
+                ref={outerRef}
+                className="relative rounded-xl border border-[var(--terminal-border)] bg-[var(--terminal-bg)] shadow-2xl overflow-hidden font-mono text-sm z-10 h-[520px] flex flex-col cursor-text"
+                onClick={() => inputRef.current?.focus()}
+              >
+                {/* Terminal Header (TETAP FIXED, TIDAK AKAN PERNAH IKUT NAIK) */}
+                <div className="flex items-center gap-2 bg-[var(--terminal-header-bg)] px-4 py-3 border-b border-[var(--terminal-border)] shrink-0 select-none">
+                  <div className="flex gap-1.5">
+                    <div className="h-3 w-3 rounded-full bg-[#FF5F56]" />
+                    <div className="h-3 w-3 rounded-full bg-[#FFBD2E]" />
+                    <div className="h-3 w-3 rounded-full bg-[#27C93F]" />
                   </div>
-                  <div className="flex gap-2 items-center mt-0.5">
-                    <span className="text-white">$</span>
-                    <motion.div
-                      animate={{ opacity: [1, 0] }}
-                      transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                      className="w-2.5 h-4 bg-[#A6ACCD]"
+                  <div className="ml-2 text-xs text-[var(--terminal-header-text)] font-sans">MINGW64:/c/Users/Zaky</div>
+                </div>
+
+                {/* Terminal Body */}
+                <div 
+                  ref={terminalRef}
+                  className="p-5 pb-2 text-[var(--terminal-text)] text-xs sm:text-sm flex-grow overflow-y-auto terminal-scroll"
+                >
+                  {/* Render History */}
+                  {history.map((item, idx) => (
+                    <TerminalHistoryLine key={idx} command={item.command} output={item.output} />
+                  ))}
+
+                  {/* Active Prompt wrapper dengan kelas 'relative' agar input terkunci di sini */}
+                  <div className="mb-2 relative">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="text-[var(--terminal-prompt-user)] font-semibold">zaky@dev</span>
+                      <span className="text-[var(--terminal-prompt-env)]">MINGW64</span>
+                      <span className="text-[var(--terminal-prompt-dir)]">~</span>
+                    </div>
+                    <div className="flex gap-2 items-center mt-0.5">
+                      <span className="text-[var(--terminal-prompt-dollar)]">$</span>
+                      <span className="text-[var(--terminal-command)] break-all">{inputValue}</span>
+                      {/* Blinking Cursor */}
+                      {isFocused && (
+                        <motion.div
+                          animate={{ opacity: [1, 0] }}
+                          transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                          className="w-2.5 h-4 bg-[var(--terminal-cursor)]"
+                        />
+                      )}
+                    </div>
+
+                    {/* Hidden Input Layer dikunci di koordinat prompt aktif */}
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '1px',
+                        height: '1px',
+                        opacity: 0,
+                        padding: 0,
+                        margin: 0,
+                        border: 'none',
+                        pointerEvents: 'none',
+                      }}
+                      autoFocus
+                      spellCheck={false}
+                      autoComplete="off"
                     />
                   </div>
-                </motion.div>
+
+                  {/* Spacer kecil di paling bawah */}
+                  <div className="h-8 shrink-0" />
+                </div>
               </div>
             </div>
+
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
-

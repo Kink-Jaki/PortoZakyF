@@ -2,22 +2,53 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import {
-
   Terminal,
 } from 'lucide-react';
 
 // ============================================================================
 // AUDIO SYNTHESIZER (Web Audio API)
 // Mensintesis efek suara digital fiksi ilmiah tanpa aset file eksternal!
+//
+// NOTE:
+// - Browsers block starting/resuming AudioContext until a user gesture.
+// - We create the context lazily and resume it on the "Tap to Start" click.
+// - We reuse a single AudioContext to avoid repeated blocked startups.
 // ============================================================================
+let audioCtx: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  try {
+    if (audioCtx) return audioCtx;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    audioCtx = new AudioContextClass();
+    return audioCtx;
+  } catch {
+    return null;
+  }
+};
+
+const resumeAudioContext = async (): Promise<void> => {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+  } catch {
+    // Ignore; autoplay policies may vary.
+  }
+};
+
 const playSound = (
   type: 'beep' | 'glitch' | 'transition',
   volumeValue: number = 0.15
 ): void => {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    // Jangan coba bunyi kalau context belum jalan (mis. resume belum berhasil).
+    if (ctx.state !== 'running') return;
 
     if (type === 'beep') {
       const osc = ctx.createOscillator();
@@ -113,6 +144,9 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   soundEnabled = true,
   showScanlines = true
 }) => {
+  // Gerbang "Tap to Start" — loading sequence baru jalan setelah user klik.
+  const [started, setStarted] = useState(false);
+
   const [progress, setProgress] = useState(0);
   const [currentPhase, setCurrentPhase] = useState(0);
   const [telemetry, setTelemetry] = useState({
@@ -124,13 +158,14 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
   // State untuk efek paralaks mouse di latar belakang
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Deteksi gerakan mouse untuk interaksi aurora
+  // Deteksi gerakan mouse untuk interaksi aurora (selalu aktif, tidak perlu gesture)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const x = (e.clientX / window.innerWidth - 0.5) * 35; // batas gerakan 35px
       const y = (e.clientY / window.innerHeight - 0.5) * 35;
       setMousePos({ x, y });
     };
+
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
@@ -140,7 +175,11 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     if (onComplete) onComplete();
   }, [onComplete, soundEnabled]);
 
+  // Loading sequence hanya berjalan setelah `started` menjadi true,
+  // yaitu setelah user menekan tombol "Tap to Start".
   useEffect(() => {
+    if (!started) return;
+
     let nextPhaseRef = 0;
 
     const interval = window.setInterval(() => {
@@ -182,7 +221,15 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     }, 55); // Sedikit disesuaikan agar terasa responsif
 
     return () => window.clearInterval(interval);
-  }, [handleComplete, soundEnabled]);
+  }, [handleComplete, soundEnabled, started]);
+
+  // Handler tombol "Tap to Start": ini dipanggil LANGSUNG dari klik asli user,
+  // jadi AudioContext.resume() dijamin lolos kebijakan autoplay browser.
+  const handleStart = async () => {
+    await resumeAudioContext();
+    if (soundEnabled) playSound('beep', 0.1);
+    setStarted(true);
+  };
 
   // Handler bypass langsung ke selesai demi kenyamanan UX
   const handleBypass = () => {
@@ -235,6 +282,18 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         duration: 0.6,
         ease: 'linear' as const
       }
+    }
+  };
+
+  // Varian untuk overlay "Tap to Start"
+  const tapToStartVariants: Variants = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: { duration: 0.5 } },
+    exit: {
+      opacity: 0,
+      scale: 0.92,
+      filter: 'blur(4px)',
+      transition: { duration: 0.4, ease: 'easeInOut' as const }
     }
   };
 
@@ -317,150 +376,196 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
         }}
       />
 
-      {/* Telemetri Kiri Atas */}
-      <motion.div
-        className="absolute top-8 left-8 z-10 hidden md:flex flex-col gap-1 font-mono text-[10px] tracking-[0.15em] text-neutral-500"
-        exit={{ x: -50, opacity: 0, transition: { duration: 0.3 } }}
-      >
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse" />
-          <span className="text-[#00E5FF]">SYS_STATUS: DEPLOYING</span>
-        </div>
-        <div>TEMP: 34°C // HEAL: 100%</div>
-      </motion.div>
-
-      {/* Telemetri Kanan Atas */}
-      <motion.div
-        className="absolute top-8 right-8 z-10 hidden md:flex flex-col gap-1 font-mono text-[10px] tracking-[0.15em] text-neutral-500 text-right"
-        exit={{ x: 50, opacity: 0, transition: { duration: 0.3 } }}
-      >
-        <div>NODE: {telemetry.node}</div>
-        <div className="text-neutral-400">
-          LAT: {telemetry.lat}MS // FPS: {telemetry.fps}
-        </div>
-      </motion.div>
-
-      {/* Konten Utama */}
-      <motion.div
-        className="relative z-10 flex flex-col items-center w-full max-w-md px-8"
-        variants={contentGlitchVariants}
-      >
-        {/* Angka Persentase + Lingkaran Orbit Tipis */}
-        <div className="relative mb-10 flex items-center justify-center w-60 h-60">
-          {/* Lingkaran Orbit Pelacak */}
-          <svg className="absolute w-full h-full opacity-15" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r="46"
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth="0.25"
-              strokeDasharray="3 3"
-            />
-          </svg>
-
-          {/* Halo Cahaya Cyan Lembut di Belakang Persentase */}
-          <div className="absolute w-36 h-36 bg-[#00E5FF]/5 rounded-full filter blur-xl" />
-
-          {/* Titik Orbit Berputar */}
+      <AnimatePresence mode="wait">
+        {!started ? (
+          // ====================================================================
+          // OVERLAY: Tap to Start
+          // Wajib ada agar AudioContext bisa di-resume dari klik asli user
+          // (memenuhi kebijakan autoplay browser).
+          // ====================================================================
           <motion.div
-            className="absolute w-full h-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'linear' }}
+            key="tap-to-start"
+            className="relative z-10 flex flex-col items-center gap-6"
+            variants={tapToStartVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
-            <div
-              className="absolute top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#00E5FF]"
-              style={{ boxShadow: '0 0 10px 2px #00E5FF' }}
-            />
-          </motion.div>
-
-          {/* Angka Persentase dengan Glitch Drop-shadow halus */}
-          <motion.h1
-            className="text-8xl font-black tracking-tighter text-transparent bg-clip-text select-none font-mono"
-            style={{
-              backgroundImage: 'linear-gradient(180deg, #FFFFFF 30%, rgba(255, 255, 255, 0.4) 100%)',
-              textShadow: '0 0 15px rgba(0,229,255,0.1)'
-            }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {Math.floor(progress)}
-          </motion.h1>
-        </div>
-
-        {/* Progress Bar Premium */}
-        <div className="w-full relative h-[1px] bg-white/10 rounded-full mb-6">
-          <motion.div
-            className="absolute top-0 left-0 h-full bg-[#00E5FF] rounded-full"
-            style={{
-              width: `${progress}%`,
-              boxShadow: '0 0 15px 1px rgba(0, 229, 255, 0.5)'
-            }}
-            layout
-            transition={{ ease: 'linear', duration: 0.1 }}
-          />
-          {/* Titik kilau (flare) di ujung bar progres */}
-          <motion.div
-            className="absolute top-1/2 -translate-y-1/2 w-6 h-[1.5px] bg-white blur-[1px]"
-            style={{ left: `calc(${progress}% - 24px)` }}
-            layout
-            transition={{ ease: 'linear', duration: 0.1 }}
-          />
-        </div>
-
-        {/* Indikator Titik Langkah Fase */}
-        <div className="flex gap-2 mb-6 justify-center">
-          {PHASES.map((_, i) => {
-            const isActive = i <= currentPhase;
-            return (
-              <motion.div
-                key={i}
-                className="h-1 rounded-full transition-all duration-300"
-                style={{
-                  width: i === currentPhase ? '20px' : '6px',
-                  backgroundColor: isActive ? '#00E5FF' : 'rgba(255, 255, 255, 0.1)',
-                  boxShadow: i === currentPhase ? '0 0 8px #00E5FF' : 'none'
-                }}
-              />
-            );
-          })}
-        </div>
-
-        {/* Teks Status */}
-        <div className="h-6 relative w-full flex items-center justify-center overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPhase}
-              className="text-xs tracking-wider text-neutral-400 font-medium font-mono text-center flex items-center gap-2 justify-center"
-              initial={{ opacity: 0, y: 10, filter: 'blur(2px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, filter: 'blur(2px)' }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+            <motion.button
+              onClick={handleStart}
+              className="group relative px-10 py-4 border border-[#00E5FF]/30 hover:border-[#00E5FF] rounded font-mono text-sm tracking-[0.3em] text-[#00E5FF] uppercase bg-[#00E5FF]/5 hover:bg-[#00E5FF]/10 transition-all duration-300"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              animate={{
+                boxShadow: [
+                  '0 0 0px rgba(0,229,255,0)',
+                  '0 0 20px rgba(0,229,255,0.3)',
+                  '0 0 0px rgba(0,229,255,0)'
+                ]
+              }}
+              transition={{ boxShadow: { duration: 2, repeat: Infinity } }}
             >
-              <Terminal className="w-3.5 h-3.5 text-[#00E5FF] animate-pulse" />
-              <span>{PHASES[currentPhase]}</span>
+              Tap to Start
+            </motion.button>
+            <span className="text-[10px] tracking-widest text-neutral-600 font-mono">
+              CLICK TO INITIALIZE SYSTEM
+            </span>
+          </motion.div>
+        ) : (
+          <React.Fragment key="loading-content">
+            {/* Telemetri Kiri Atas */}
+            <motion.div
+              className="absolute top-8 left-8 z-10 hidden md:flex flex-col gap-1 font-mono text-[10px] tracking-[0.15em] text-neutral-500"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ x: -50, opacity: 0, transition: { duration: 0.3 } }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00E5FF] animate-pulse" />
+                <span className="text-[#00E5FF]">SYS_STATUS: DEPLOYING</span>
+              </div>
+              <div>TEMP: 34°C // HEAL: 100%</div>
             </motion.div>
-          </AnimatePresence>
-        </div>
 
-        {/* UX: Tombol Bypass (Lewati) */}
-        {progress > 25 && progress < 95 && (
-          <motion.button
-            onClick={handleBypass}
-            className="mt-6 px-4 py-1.5 border border-[#00E5FF]/20 hover:border-[#00E5FF]/60 rounded text-[10px] tracking-widest text-[#00E5FF]/60 hover:text-[#00E5FF] font-mono uppercase bg-[#00E5FF]/5 transition-all duration-200"
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-          >
-            Bypass Sequence_
-          </motion.button>
+            {/* Telemetri Kanan Atas */}
+            <motion.div
+              className="absolute top-8 right-8 z-10 hidden md:flex flex-col gap-1 font-mono text-[10px] tracking-[0.15em] text-neutral-500 text-right"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ x: 50, opacity: 0, transition: { duration: 0.3 } }}
+            >
+              <div>NODE: {telemetry.node}</div>
+              <div className="text-neutral-400">
+                LAT: {telemetry.lat}MS // FPS: {telemetry.fps}
+              </div>
+            </motion.div>
+
+            {/* Konten Utama */}
+            <motion.div
+              className="relative z-10 flex flex-col items-center w-full max-w-md px-8"
+              variants={contentGlitchVariants}
+              initial="initial"
+              animate="initial"
+              exit="exit"
+            >
+              {/* Angka Persentase + Lingkaran Orbit Tipis */}
+              <div className="relative mb-10 flex items-center justify-center w-60 h-60">
+                {/* Lingkaran Orbit Pelacak */}
+                <svg className="absolute w-full h-full opacity-15" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="46"
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="0.25"
+                    strokeDasharray="3 3"
+                  />
+                </svg>
+
+                {/* Halo Cahaya Cyan Lembut di Belakang Persentase */}
+                <div className="absolute w-36 h-36 bg-[#00E5FF]/5 rounded-full filter blur-xl" />
+
+                {/* Titik Orbit Berputar */}
+                <motion.div
+                  className="absolute w-full h-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'linear' }}
+                >
+                  <div
+                    className="absolute top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#00E5FF]"
+                    style={{ boxShadow: '0 0 10px 2px #00E5FF' }}
+                  />
+                </motion.div>
+
+                {/* Angka Persentase dengan Glitch Drop-shadow halus */}
+                <motion.h1
+                  className="text-8xl font-black tracking-tighter text-transparent bg-clip-text select-none font-mono"
+                  style={{
+                    backgroundImage: 'linear-gradient(180deg, #FFFFFF 30%, rgba(255, 255, 255, 0.4) 100%)',
+                    textShadow: '0 0 15px rgba(0,229,255,0.1)'
+                  }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {Math.floor(progress)}
+                </motion.h1>
+              </div>
+
+              {/* Progress Bar Premium */}
+              <div className="w-full relative h-[1px] bg-white/10 rounded-full mb-6">
+                <motion.div
+                  className="absolute top-0 left-0 h-full bg-[#00E5FF] rounded-full"
+                  style={{
+                    width: `${progress}%`,
+                    boxShadow: '0 0 15px 1px rgba(0, 229, 255, 0.5)'
+                  }}
+                  layout
+                  transition={{ ease: 'linear', duration: 0.1 }}
+                />
+                {/* Titik kilau (flare) di ujung bar progres */}
+                <motion.div
+                  className="absolute top-1/2 -translate-y-1/2 w-6 h-[1.5px] bg-white blur-[1px]"
+                  style={{ left: `calc(${progress}% - 24px)` }}
+                  layout
+                  transition={{ ease: 'linear', duration: 0.1 }}
+                />
+              </div>
+
+              {/* Indikator Titik Langkah Fase */}
+              <div className="flex gap-2 mb-6 justify-center">
+                {PHASES.map((_, i) => {
+                  const isActive = i <= currentPhase;
+                  return (
+                    <motion.div
+                      key={i}
+                      className="h-1 rounded-full transition-all duration-300"
+                      style={{
+                        width: i === currentPhase ? '20px' : '6px',
+                        backgroundColor: isActive ? '#00E5FF' : 'rgba(255, 255, 255, 0.1)',
+                        boxShadow: i === currentPhase ? '0 0 8px #00E5FF' : 'none'
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Teks Status */}
+              <div className="h-6 relative w-full flex items-center justify-center overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentPhase}
+                    className="text-xs tracking-wider text-neutral-400 font-medium font-mono text-center flex items-center gap-2 justify-center"
+                    initial={{ opacity: 0, y: 10, filter: 'blur(2px)' }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -10, filter: 'blur(2px)' }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-[#00E5FF] animate-pulse" />
+                    <span>{PHASES[currentPhase]}</span>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* UX: Tombol Bypass (Lewati) */}
+              {progress > 25 && progress < 95 && (
+                <motion.button
+                  onClick={handleBypass}
+                  className="mt-6 px-4 py-1.5 border border-[#00E5FF]/20 hover:border-[#00E5FF]/60 rounded text-[10px] tracking-widest text-[#00E5FF]/60 hover:text-[#00E5FF] font-mono uppercase bg-[#00E5FF]/5 transition-all duration-200"
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  Bypass Sequence_
+                </motion.button>
+              )}
+            </motion.div>
+          </React.Fragment>
         )}
-      </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 };
 
 export default LoadingScreen;
-

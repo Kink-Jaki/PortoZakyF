@@ -31,12 +31,16 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Always sync local state when pathname changes (including direct assignments)
+    setPath(window.location.pathname);
+
     // Simulate loading screen only for landing page.
-    if (path !== '/dashboard') {
+    if (window.location.pathname !== '/dashboard') {
       setIsLoading(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
+
 
   const isDashboardRoot = useMemo(() => path === '/dashboard', [path]);
   const isDashboardProjects = useMemo(() => path === '/dashboard/projects', [path]);
@@ -50,12 +54,8 @@ function App() {
         {!isDashboardRoot && <GalaxyBackground />}
 
         {isDashboardRoot ? (
-          (() => {
-            if (window.location.pathname !== '/dashboard/projects') {
-              window.location.pathname = '/dashboard/projects';
-            }
-            return null;
-          })()
+          // '/dashboard' root redirect is handled by Navbar to avoid render-time navigation issues.
+          null
         ) : isDashboardProjects ? (
           <DashboardProjects />
         ) : isDashboardSkills ? (

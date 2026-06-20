@@ -1,8 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Briefcase, Edit3, Plus, Trash2, Save, X, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Briefcase,
+  Edit3,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
+
 import DashboardLayout from './DashboardLayout';
 import { useAuth } from '../auth/AuthContext';
-import { authHeaders, getToken } from '../auth/auth';
+import { getToken, authHeaders } from '../auth/auth';
+import { apiBase } from '../config/api';
 
 type Experience = {
   id: number;
@@ -16,19 +27,13 @@ type Experience = {
   view_count?: number | null;
 };
 
-
-const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
-
-
 async function apiGet<T>(path: string): Promise<T> {
-  try {
-    const res = await fetch(`${apiBase}${path}`, { headers: { ...authHeaders() } });
-    if (!res.ok) throw new Error(`Gagal mengambil data (${res.status})`);
-    return (await res.json()) as T;
-  } catch (err) {
-    console.warn('API Error (Mocking data for preview):', err instanceof Error ? err.message : err);
-    return [] as unknown as T;
+  const res = await fetch(`${apiBase}${path}`, { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message ?? `Gagal mengambil data (${res.status})`);
   }
+  return (await res.json()) as T;
 }
 
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
@@ -106,7 +111,8 @@ const SectionShell: React.FC<{
 };
 
 export default function DashboardExperiences() {
-  const { isLoggedIn } = useAuth();
+  useAuth();
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,10 +128,9 @@ export default function DashboardExperiences() {
     endDate: '',
   });
 
-  const authToken = useMemo(() => getToken(), []);
   useEffect(() => {
-    if (!authToken) window.location.pathname = '/';
-  }, [authToken]);
+    if (!getToken()) window.location.pathname = '/';
+  }, []);
 
   const refresh = async () => {
     setLoading(true);
@@ -146,7 +151,7 @@ export default function DashboardExperiences() {
   }, []);
 
   const ensureLoggedInOrRedirect = () => {
-    if (!isLoggedIn) window.location.pathname = '/';
+    if (!getToken()) window.location.pathname = '/';
   };
 
   const resetExperienceForm = () =>
@@ -176,6 +181,7 @@ export default function DashboardExperiences() {
 
       if (experienceForm.id) await apiPut(`/experiences/${experienceForm.id}`, payload);
       else await apiPost('/experiences', payload);
+
       resetExperienceForm();
       await refresh();
     } catch (err) {
@@ -203,8 +209,18 @@ export default function DashboardExperiences() {
         <div className="grid gap-6">
           <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 shadow-inner">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Title" placeholder="Software Engineer..." value={experienceForm.title} onChange={(e) => setExperienceForm((v) => ({ ...v, title: e.target.value }))} />
-              <Input label="Organization" placeholder="Perusahaan X..." value={experienceForm.organization} onChange={(e) => setExperienceForm((v) => ({ ...v, organization: e.target.value }))} />
+              <Input
+                label="Title"
+                placeholder="Software Engineer..."
+                value={experienceForm.title}
+                onChange={(e) => setExperienceForm((v) => ({ ...v, title: e.target.value }))}
+              />
+              <Input
+                label="Organization"
+                placeholder="Perusahaan X..."
+                value={experienceForm.organization}
+                onChange={(e) => setExperienceForm((v) => ({ ...v, organization: e.target.value }))}
+              />
               <div className="sm:col-span-2">
                 <div className="space-y-1.5 w-full">
                   <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Description</label>
@@ -216,8 +232,18 @@ export default function DashboardExperiences() {
                   />
                 </div>
               </div>
-              <Input label="Start Date" type="date" value={experienceForm.startDate} onChange={(e) => setExperienceForm((v) => ({ ...v, startDate: e.target.value }))} />
-              <Input label="End Date" type="date" value={experienceForm.endDate} onChange={(e) => setExperienceForm((v) => ({ ...v, endDate: e.target.value }))} />
+              <Input
+                label="Start Date"
+                type="date"
+                value={experienceForm.startDate}
+                onChange={(e) => setExperienceForm((v) => ({ ...v, startDate: e.target.value }))}
+              />
+              <Input
+                label="End Date"
+                type="date"
+                value={experienceForm.endDate}
+                onChange={(e) => setExperienceForm((v) => ({ ...v, endDate: e.target.value }))}
+              />
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/5 pt-5">
@@ -228,6 +254,7 @@ export default function DashboardExperiences() {
                 {experienceForm.id ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                 {experienceForm.id ? 'Simpan' : 'Tambah Exp'}
               </button>
+
               {experienceForm.id !== 0 && (
                 <button
                   onClick={resetExperienceForm}
@@ -276,6 +303,7 @@ export default function DashboardExperiences() {
                     >
                       <Edit3 className="h-4 w-4" />
                     </button>
+
                     <button
                       onClick={async () => {
                         ensureLoggedInOrRedirect();

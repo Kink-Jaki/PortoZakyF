@@ -1,6 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Code2, Edit3, Plus, Trash2, Save, X, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Code2,
+  Edit3,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  AlertCircle,
+  Loader2,
+} from 'lucide-react';
+
 import DashboardLayout from './DashboardLayout';
+import { getToken, authHeaders } from '../auth/auth';
+import { apiBase } from '../config/api';
+import { useAuth } from '../auth/AuthContext';
 
 type Skill = {
   id: number;
@@ -9,25 +22,13 @@ type Skill = {
   view_count?: number | null;
 };
 
-const getToken = (): string => 'mock-token';
-const authHeaders = (): Record<string, string> => ({ Authorization: `Bearer ${getToken()}` });
-const useAuth = (): { logout: () => void; isLoggedIn: boolean } => ({
-  logout: () => console.log('Logged out'),
-  isLoggedIn: true,
-});
-
-import { apiBase } from '../config/api';
-
-
 async function apiGet<T>(path: string): Promise<T> {
-  try {
-    const res = await fetch(`${apiBase}${path}`, { headers: { ...authHeaders() } });
-    if (!res.ok) throw new Error(`Gagal mengambil data (${res.status})`);
-    return (await res.json()) as T;
-  } catch (err) {
-    console.warn('API Error (Mocking data for preview):', err instanceof Error ? err.message : err);
-    return [] as unknown as T;
+  const res = await fetch(`${apiBase}${path}`, { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message ?? `Gagal mengambil data (${res.status})`);
   }
+  return (await res.json()) as T;
 }
 
 async function apiPost<T>(path: string, body: unknown): Promise<T> {
@@ -105,17 +106,17 @@ const SectionShell: React.FC<{
 };
 
 export default function DashboardSkills() {
-  const { isLoggedIn } = useAuth();
+  useAuth();
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillForm, setSkillForm] = useState({ id: 0, name: '', category: '' });
 
-  const authToken = useMemo(() => getToken(), []);
   useEffect(() => {
-    if (!authToken) window.location.pathname = '/';
-  }, [authToken]);
+    if (!getToken()) window.location.pathname = '/';
+  }, []);
 
   const refresh = async () => {
     setLoading(true);
@@ -136,7 +137,7 @@ export default function DashboardSkills() {
   }, []);
 
   const ensureLoggedInOrRedirect = () => {
-    if (!isLoggedIn) window.location.pathname = '/';
+    if (!getToken()) window.location.pathname = '/';
   };
 
   const resetSkillForm = () => setSkillForm({ id: 0, name: '', category: '' });
@@ -174,9 +175,20 @@ export default function DashboardSkills() {
         <div className="grid gap-6">
           <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 shadow-inner">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input label="Name" placeholder="React, Figma..." value={skillForm.name} onChange={(e) => setSkillForm((v) => ({ ...v, name: e.target.value }))} />
-              <Input label="Category" placeholder="Frontend, Design..." value={skillForm.category} onChange={(e) => setSkillForm((v) => ({ ...v, category: e.target.value }))} />
+              <Input
+                label="Name"
+                placeholder="React, Figma..."
+                value={skillForm.name}
+                onChange={(e) => setSkillForm((v) => ({ ...v, name: e.target.value }))}
+              />
+              <Input
+                label="Category"
+                placeholder="Frontend, Design..."
+                value={skillForm.category}
+                onChange={(e) => setSkillForm((v) => ({ ...v, category: e.target.value }))}
+              />
             </div>
+
             <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/5 pt-5">
               <button
                 onClick={handleSkillSave}
@@ -185,6 +197,7 @@ export default function DashboardSkills() {
                 {skillForm.id ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                 {skillForm.id ? 'Simpan' : 'Tambah Skill'}
               </button>
+
               {skillForm.id !== 0 && (
                 <button
                   onClick={resetSkillForm}
@@ -207,6 +220,7 @@ export default function DashboardSkills() {
                   <div className="text-sm font-semibold text-gray-100">{s.name}</div>
                   <div className="mt-1 text-[11px] text-gray-400">👁 {s.view_count ?? 0} views</div>
                 </div>
+
                 <div className="flex flex-col gap-1 sm:opacity-0 transition-opacity duration-300 group-hover:opacity-100">
                   <button
                     onClick={() => setSkillForm({ id: s.id, name: s.name, category: s.category })}
@@ -214,6 +228,7 @@ export default function DashboardSkills() {
                   >
                     <Edit3 className="h-3 w-3" />
                   </button>
+
                   <button
                     onClick={async () => {
                       ensureLoggedInOrRedirect();
