@@ -393,8 +393,8 @@ export default function App() {
 
                 <Reveal delayMs={480}>
                   <a
-                    href="/CV_Muhammad_Fairuz_Zaky_Harvard.pdf"
-                    download="CV_Muhammad_Fairuz_Zaky_Harvard.pdf"
+                    href="/Muhammad_Fairuz_Zaky_CV.pdf"
+                    download="Muhammad_Fairuz_Zaky_CV.pdf"
 
                     className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-6 py-3 text-sm font-medium text-[var(--text-primary)] shadow-md transition-all hover:scale-[1.02]"
                   >

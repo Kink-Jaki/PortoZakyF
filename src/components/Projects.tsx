@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ExternalLink, GitBranch } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ExternalLink, GitBranch, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ProjectApiRow = {
   id: number;
@@ -33,7 +33,10 @@ const getApiUrl = (): string => {
   } catch (e) {
     // Abaikan jika tidak didukung
   }
-  return import.meta.env.VITE_API_URL ?? 'https://zakyportoapi-production.up.railway.app';
+  
+
+
+  return 'https://zakyportoapi-production.up.railway.app';
 };
 
 const apiBase = getApiUrl();
@@ -84,6 +87,7 @@ const translations = {
     loadError: 'Gagal memuat projects',
     sourceLabel: 'Kode Sumber',
     infoLabel: 'Info Lengkap',
+    comingSoon: 'Fitur Live Demo akan segera hadir!',
   },
   en: {
     badge: 'Projects',
@@ -93,6 +97,7 @@ const translations = {
     loadError: 'Failed to load projects',
     sourceLabel: 'Source Code',
     infoLabel: 'More Info',
+    comingSoon: 'Live Demo feature is coming soon!',
   },
 };
 
@@ -103,6 +108,9 @@ const Projects: React.FC = () => {
 
   // State Bahasa
   const [lang, setLang] = useState<Lang>('id');
+  
+  // State Notifikasi Kustom
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Load awal & listener untuk mendeteksi perubahan bahasa
   useEffect(() => {
@@ -124,6 +132,16 @@ const Projects: React.FC = () => {
     };
   }, []);
 
+  // Timer untuk menghilangkan notifikasi secara otomatis
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   const t = translations[lang];
 
   useEffect(() => {
@@ -142,7 +160,6 @@ const Projects: React.FC = () => {
           const tags = stackToTags(p.stack);
           const imageUrl = normalizeImageUrl(p.imageUrl);
 
-          // Menggunakan referensi 'labelKey' agar label bisa dirender secara dinamis berdasarkan bahasa
           const links: { labelKey: 'source' | 'info'; href: string }[] = [];
           if (p.githubUrl) links.push({ labelKey: 'source', href: p.githubUrl });
           if (!links.length) links.push({ labelKey: 'info', href: '#' });
@@ -166,13 +183,16 @@ const Projects: React.FC = () => {
     };
 
     fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Hanya dipanggil saat mount awal
+  }, [t.fetchError, t.loadError]); // Menambahkan dependencies yang diperlukan
 
   const cardList = useMemo(() => projects, [projects]);
 
+  const handleLiveDemoClick = () => {
+    setToastMessage(t.comingSoon);
+  };
+
   return (
-    <section id="projects" className="py-20 md:py-24 bg-[var(--bg-primary)] transition-colors duration-300" aria-label="Projects">
+    <section id="projects" className="py-20 md:py-24 bg-[var(--bg-primary)] transition-colors duration-300 relative" aria-label="Projects">
       <div className="mx-auto max-w-7xl px-4 md:px-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -201,6 +221,7 @@ const Projects: React.FC = () => {
           </div>
         )}
 
+        {}
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {(loading ? cardList : projects).map((p, idx) => (
             <Reveal key={p.title} delayMs={150 * (idx % 3 + 1)}>
@@ -264,6 +285,16 @@ const Projects: React.FC = () => {
                       {l.labelKey === 'source' ? t.sourceLabel : t.infoLabel}
                     </a>
                   ))}
+
+                  {/* Live Demo Button with Custom Notification */}
+                  <button
+                    type="button"
+                    onClick={handleLiveDemoClick}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-all duration-300 hover:bg-[var(--text-primary)]/[0.08] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]/30 focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]"
+                  >
+                    <ExternalLink className="h-4 w-4" strokeWidth={2} />
+                    Live Demo
+                  </button>
                 </div>
 
                 {/* Bottom line accent effect */}
@@ -273,6 +304,33 @@ const Projects: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-5 py-4 shadow-2xl backdrop-blur-xl transition-colors duration-300"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#06B6D4]/10">
+              <Info className="h-5 w-5 text-[#06B6D4]" />
+            </div>
+            <p className="text-sm font-medium text-[var(--text-primary)] pr-2">
+              {toastMessage}
+            </p>
+            <button 
+              onClick={() => setToastMessage(null)}
+              className="ml-auto rounded-full p-1 text-[var(--text-secondary)] hover:bg-[var(--text-primary)]/10 hover:text-[var(--text-primary)] transition-colors"
+              aria-label="Close notification"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };
