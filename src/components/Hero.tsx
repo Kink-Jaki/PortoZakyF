@@ -380,15 +380,29 @@ export default function App() {
                 </p>
               </Reveal>
 
-              <Reveal delayMs={360}>
-                <a
-                  href="#projects"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] px-6 py-3 text-sm font-medium text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02]"
-                >
-                  {t.btn}
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-              </Reveal>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Reveal delayMs={360}>
+                  <a
+                    href="#projects"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#06B6D4] to-[#22D3EE] px-6 py-3 text-sm font-medium text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02]"
+                  >
+                    {t.btn}
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                </Reveal>
+
+                <Reveal delayMs={480}>
+                  <a
+                    href="/CV_Muhammad_Fairuz_Zaky_Harvard.pdf"
+                    download="CV_Muhammad_Fairuz_Zaky_Harvard.pdf"
+
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-6 py-3 text-sm font-medium text-[var(--text-primary)] shadow-md transition-all hover:scale-[1.02]"
+                  >
+                    {lang === 'id' ? 'Download CV' : 'Download CV'}
+                  </a>
+                </Reveal>
+              </div>
+
 
               {/* Stats */}
               <div className="grid gap-4 sm:grid-cols-3">
