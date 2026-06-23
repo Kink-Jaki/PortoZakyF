@@ -61,9 +61,12 @@ export default function DashboardLayout({
             {TABS.map((t) => {
               const active = path === t.href;
               return (
-                <a
+                <button
                   key={t.href}
-                  href={t.href}
+                  type="button"
+                  onClick={() => {
+                    window.location.pathname = t.href;
+                  }}
                   className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-300 ${
                     active
                       ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-200'
@@ -71,7 +74,7 @@ export default function DashboardLayout({
                   }`}
                 >
                   {t.label}
-                </a>
+                </button>
               );
             })}
           </div>

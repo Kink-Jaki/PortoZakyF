@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
+
 import { ExternalLink, GitBranch, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +15,7 @@ type ProjectApiRow = {
 };
 
 type ProjectCardData = {
+  id: number;
   title: string;
   description: string;
   year: string;
@@ -41,7 +43,9 @@ const getApiUrl = (): string => {
 
 const apiBase = getApiUrl();
 
-// --- Komponen Reveal Lokal ---
+// Karena endpoint list tidak selalu mengirim field id ke UI card,
+// kita ambil id dari data project API secara langsung saat mapping.
+
 interface RevealProps {
   children: ReactNode;
   delayMs?: number;
@@ -87,7 +91,6 @@ const translations = {
     loadError: 'Gagal memuat projects',
     sourceLabel: 'Kode Sumber',
     infoLabel: 'Info Lengkap',
-    comingSoon: 'Fitur Live Demo akan segera hadir!',
   },
   en: {
     badge: 'Projects',
@@ -97,9 +100,9 @@ const translations = {
     loadError: 'Failed to load projects',
     sourceLabel: 'Source Code',
     infoLabel: 'More Info',
-    comingSoon: 'Live Demo feature is coming soon!',
   },
 };
+
 
 const Projects: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -165,6 +168,7 @@ const Projects: React.FC = () => {
           if (!links.length) links.push({ labelKey: 'info', href: '#' });
 
           return {
+            id: p.id,
             title: p.title,
             description: p.description,
             year,
@@ -187,9 +191,7 @@ const Projects: React.FC = () => {
 
   const cardList = useMemo(() => projects, [projects]);
 
-  const handleLiveDemoClick = () => {
-    setToastMessage(t.comingSoon);
-  };
+
 
   return (
     <section id="projects" className="py-20 md:py-24 bg-[var(--bg-primary)] transition-colors duration-300 relative" aria-label="Projects">
@@ -267,7 +269,7 @@ const Projects: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Link Buttons */}
+                  {/* Link Buttons */}
                 <div className="mt-6 flex flex-col gap-2 sm:flex-row">
                   {p.links.map((l) => (
                     <a
@@ -286,15 +288,19 @@ const Projects: React.FC = () => {
                     </a>
                   ))}
 
-                  {/* Live Demo Button with Custom Notification */}
+                  {/* Detail Button */}
                   <button
                     type="button"
-                    onClick={handleLiveDemoClick}
+                    onClick={() => {
+                      window.location.pathname = `/project/${p.id}`;
+                    }}
                     className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--system-badge-bg)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] transition-all duration-300 hover:bg-[var(--text-primary)]/[0.08] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]/30 focus:outline-none focus:ring-2 focus:ring-[#06B6D4] focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)]"
                   >
-                    <ExternalLink className="h-4 w-4" strokeWidth={2} />
-                    Live Demo
+                    <Info className="h-4 w-4" />
+                    Detail
                   </button>
+
+
                 </div>
 
                 {/* Bottom line accent effect */}

@@ -18,6 +18,8 @@ import { AuthProvider } from './auth/AuthContext';
 import DashboardProjects from './pages/DashboardProjects';
 import DashboardSkills from './pages/DashboardSkills';
 import DashboardExperiences from './pages/DashboardExperiences';
+import ProjectDetail from './pages/ProjectDetail';
+
 
 
 function App() {
@@ -46,6 +48,7 @@ function App() {
   const isDashboardProjects = useMemo(() => path === '/dashboard/projects', [path]);
   const isDashboardSkills = useMemo(() => path === '/dashboard/skills', [path]);
   const isDashboardExperiences = useMemo(() => path === '/dashboard/experiences', [path]);
+  const isProjectDetail = useMemo(() => path.startsWith('/project/'), [path]);
 
 
   return (
@@ -62,6 +65,8 @@ function App() {
           <DashboardSkills />
         ) : isDashboardExperiences ? (
           <DashboardExperiences />
+        ) : isProjectDetail ? (
+          <ProjectDetail />
         ) : (
           <AnimatePresence mode="wait">
             {isLoading ? (
